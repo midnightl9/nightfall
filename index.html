@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LordNine Guild Management</title>
-  <meta name="description" content="Guild management dashboard (static) - members, attendance, events." />
+  <meta name="description" content="Guild management dashboard (static) - members, attendance, events, boss timers." />
   <style>
     :root{
       --bg:#0b1020;
@@ -163,6 +163,157 @@
       background: rgba(255,255,255,.03);
     }
 
+    /* Boss Timers layout (same style system) */
+    .bossWrap{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .bossHeaderRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    .bossHeaderRow h3{margin:0;font-size:14px;letter-spacing:.2px}
+    .bossHeaderRow .right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .bossSection{
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.02);
+      overflow:hidden;
+    }
+    .bossSection .secHd{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.02);
+      font-size:12px;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      color: var(--muted);
+    }
+    .bossSection .secHd .left{
+      display:flex;align-items:center;gap:10px;
+      font-weight:700;
+    }
+    .bar{
+      width:6px;height:14px;border-radius:99px;background: rgba(255,255,255,.18);
+    }
+    .bar.good{background: rgba(68,209,157,.75)}
+    .bar.warn{background: rgba(247,201,72,.75)}
+    .bar.bad{background: rgba(255,107,107,.75)}
+    .bossSection .secBd{padding:12px}
+    .bossEmpty{
+      border:1px dashed rgba(255,255,255,.14);
+      background: rgba(0,0,0,.10);
+      border-radius:12px;
+      padding:12px;
+      color: var(--muted);
+      font-size:13px;
+    }
+    .bossGrid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:10px;
+    }
+    @media (max-width: 1100px){ .bossGrid{grid-template-columns: repeat(3, minmax(0, 1fr));} }
+    @media (max-width: 820px){ .bossGrid{grid-template-columns: repeat(2, minmax(0, 1fr));} }
+    @media (max-width: 520px){ .bossGrid{grid-template-columns: 1fr;} }
+
+    .bossCard{
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      position:relative;
+      min-height:108px;
+    }
+    .bossTop{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+    }
+    .bossLeft{
+      display:flex;gap:10px;align-items:center;
+      min-width:0;
+    }
+    .bossAvatar{
+      width:44px;height:44px;border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      display:flex;align-items:center;justify-content:center;
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    .bossAvatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .bossMeta{min-width:0}
+    .bossName{
+      font-weight:800;
+      font-size:13px;
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .bossLvl{
+      margin-top:2px;
+      font-size:12px;
+      color: var(--muted);
+    }
+    .badgeTime{
+      font-family: var(--mono);
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      white-space:nowrap;
+      flex:0 0 auto;
+    }
+    .bossMid{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      font-size:12px;
+      color: var(--muted);
+    }
+    .chip{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(110,168,254,.22);
+      background: rgba(110,168,254,.12);
+      color: var(--text);
+      font-size:12px;
+      width:fit-content;
+    }
+    .bossBottom{
+      font-size:12px;
+      color: var(--muted);
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    }
+    .bossActions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+    .bossActions .btn{padding:7px 10px;border-radius:12px;font-size:12px}
+    .lockHint{color:var(--muted);font-size:12px}
+    .statusPill{
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+    }
+    .statusPill.alive{border-color: rgba(68,209,157,.25); background: rgba(68,209,157,.10); color: var(--text); }
+    .statusPill.resp{border-color: rgba(247,201,72,.25); background: rgba(247,201,72,.10); color: var(--text); }
+    .statusPill.dead{border-color: rgba(255,107,107,.25); background: rgba(255,107,107,.10); color: var(--text); }
+    .statusPill.unk{border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: var(--muted); }
+
     .modalWrap{
       position:fixed;inset:0;background:rgba(0,0,0,.55);
       display:none;align-items:center;justify-content:center;padding:18px;z-index:50
@@ -201,12 +352,13 @@
         <div class="logo" aria-hidden="true"></div>
         <div>
           <h1>LordNine Guild Management</h1>
-          <p class="mono">static • github pages</p>
+          <p class="mono"></p>
         </div>
       </div>
 
       <nav class="nav" id="nav">
         <a href="#dashboard" data-route="dashboard" class="active"><span>Dashboard</span><span class="pill" id="pillMembers">0</span></a>
+        <a href="#boss" data-route="boss"><span>Boss</span><span class="pill" id="pillBoss">0</span></a>
         <a href="#members" data-route="members"><span>Members</span><span class="pill">Roster</span></a>
         <a href="#attendance" data-route="attendance"><span>Attendance</span><span class="pill">Boss</span></a>
         <a href="#events" data-route="events"><span>Events</span><span class="pill">Calendar</span></a>
@@ -223,7 +375,6 @@
           </div>
           <button class="btn" id="btnExport" data-admin-only="1">Export</button>
         </div>
-        <!-- Removed Ctrl/K/Quick add hint (as requested) -->
       </div>
     </aside>
 
@@ -233,7 +384,7 @@
 
         <div class="search" role="search">
           <span class="muted mono">/</span>
-          <input id="globalSearch" placeholder="Search members, attendance, events, notes…" autocomplete="off" />
+          <input id="globalSearch" placeholder="Search members, attendance, events, bosses…" autocomplete="off" />
         </div>
 
         <div class="actions">
@@ -241,7 +392,8 @@
           <button class="btn danger" id="btnReset" data-admin-only="1">Reset</button>
 
           <button class="btn" id="btnAdminLogin">Admin Login</button>
-          <button class="btn ghost hide" id="btnAdminLogout">Logout</button>
+          <!-- ✅ merged change: mark logout as admin-only for cleaner gating -->
+          <button class="btn ghost hide" id="btnAdminLogout" data-admin-only="1">Logout</button>
         </div>
       </header>
 
@@ -249,7 +401,7 @@
         <div>
           <div style="font-weight:700;letter-spacing:.2px;">Viewer mode</div>
           <div class="muted" style="font-size:13px;margin-top:4px;">
-            You can view roster and attendance. Admin actions are locked.
+            You can view roster, attendance, and boss timers. Admin actions are locked.
           </div>
         </div>
         <button class="btn primary small" id="btnAdminLogin2">Login as Admin</button>
@@ -276,15 +428,15 @@
           <div class="card" style="grid-column: span 4;">
             <div class="hd">
               <div>
-                <h3>Boss Attendance</h3>
-                <p>Last 7 entries</p>
+                <h3>Boss Timers</h3>
+                <p>Tracked bosses</p>
               </div>
-              <span class="tag"><span class="dot warn"></span> tracking</span>
+              <span class="tag"><span class="dot warn"></span> timers</span>
             </div>
             <div class="bd stat">
-              <div class="num" id="statAttendance">0%</div>
-              <div class="sub">Average participation rate</div>
-              <div class="trend" id="trendAttendance">Viewer can view logs</div>
+              <div class="num" id="statBosses">0</div>
+              <div class="sub">Alive / Respawning / Dead / Unknown</div>
+              <div class="trend" id="trendBosses">Open Boss tab</div>
             </div>
           </div>
 
@@ -350,10 +502,67 @@
         </div>
       </section>
 
+      <!-- BOSS TAB -->
+      <section id="view-boss" class="hide">
+        <div class="bossWrap">
+          <div class="bossHeaderRow">
+            <div>
+              <h3 style="margin:0;">Boss Timers</h3>
+              <div class="muted" style="font-size:13px;margin-top:4px;">
+                View-only for visitors. Admin can edit timers and status.
+              </div>
+            </div>
+            <div class="right">
+              <span class="statusPill" id="bossTotalPill">0 total</span>
+              <button class="btn primary" id="btnBossAdd" data-admin-only="1">Add Boss</button>
+            </div>
+          </div>
+
+          <div class="bossSection">
+            <div class="secHd">
+              <div class="left"><span class="bar good"></span> Alive</div>
+              <span class="pill" id="countAlive">0</span>
+            </div>
+            <div class="secBd">
+              <div id="aliveList" class="bossEmpty">No alive bosses</div>
+            </div>
+          </div>
+
+          <div class="bossSection">
+            <div class="secHd">
+              <div class="left"><span class="bar warn"></span> Respawning</div>
+              <span class="pill" id="countRespawning">0</span>
+            </div>
+            <div class="secBd">
+              <div id="respawnList" class="bossEmpty">No respawning bosses</div>
+            </div>
+          </div>
+
+          <div class="bossSection">
+            <div class="secHd">
+              <div class="left"><span class="bar bad"></span> Dead</div>
+              <span class="pill" id="countDead">0</span>
+            </div>
+            <div class="secBd">
+              <div id="deadGridWrap"></div>
+            </div>
+          </div>
+
+          <div class="bossSection">
+            <div class="secHd">
+              <div class="left"><span class="bar"></span> Unknown</div>
+              <span class="pill" id="countUnknown">0</span>
+            </div>
+            <div class="secBd">
+              <div id="unknownGridWrap"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- MEMBERS (VISIBLE TO ALL, VIEW-ONLY FOR VISITORS) -->
       <section id="view-members" class="hide">
         <div class="grid">
-          <!-- Admin add/edit panel -->
           <div class="card" style="grid-column: span 5;" data-admin-only="1">
             <div class="hd">
               <div>
@@ -399,13 +608,9 @@
                   <button class="btn primary" type="submit">Save Member</button>
                 </div>
               </form>
-              <div class="muted" style="margin-top:10px;font-size:12px;">
-                Stored in <span class="mono">localStorage</span> (no server).
-              </div>
             </div>
           </div>
 
-          <!-- Public roster table -->
           <div class="card" style="grid-column: span 7;">
             <div class="hd">
               <div>
@@ -436,7 +641,6 @@
       <!-- ATTENDANCE (VISIBLE TO ALL, VIEW-ONLY FOR VISITORS) -->
       <section id="view-attendance" class="hide">
         <div class="grid">
-          <!-- Admin log panel -->
           <div class="card" style="grid-column: span 5;" data-admin-only="1">
             <div class="hd">
               <div>
@@ -471,7 +675,6 @@
             </div>
           </div>
 
-          <!-- Public attendance logs -->
           <div class="card" style="grid-column: span 7;">
             <div class="hd">
               <div>
@@ -652,6 +855,57 @@
     </div>
   </div>
 
+  <!-- BOSS EDIT MODAL (ADMIN ONLY) -->
+  <div class="modalWrap" id="bossWrap" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bossTitle">
+      <div class="hd">
+        <div>
+          <h3 id="bossTitle" style="margin:0;font-size:14px;">Boss</h3>
+          <p class="muted" style="margin:4px 0 0;font-size:12px;">Admin can edit status and next respawn time.</p>
+        </div>
+        <button class="btn" id="btnCloseBoss">Close</button>
+      </div>
+      <div class="bd">
+        <form id="bossForm" class="form">
+          <input id="bId" type="hidden" />
+          <div class="field">
+            <label>Name</label>
+            <input id="bName" placeholder="e.g., Ratan" required />
+          </div>
+          <div class="field">
+            <label>Level</label>
+            <input id="bLevel" placeholder="e.g., 60" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="bStatus">
+              <option value="Alive">Alive</option>
+              <option value="Respawning">Respawning</option>
+              <option value="Dead">Dead</option>
+              <option value="Unknown">Unknown</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Next Respawn</label>
+            <input id="bRespawn" type="datetime-local" />
+          </div>
+          <div class="field full">
+            <label>Image URL (optional)</label>
+            <input id="bImg" placeholder="https://…" />
+          </div>
+          <div class="field full" style="display:flex;justify-content:flex-end;gap:10px;">
+            <button type="button" class="btn danger" id="btnBossDelete">Delete</button>
+            <button type="button" class="btn" id="btnBossCancel">Cancel</button>
+            <button class="btn primary" type="submit">Save</button>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:10px;">
+            Tip: Set status to <span class="mono">Respawning</span> or <span class="mono">Dead</span> with a Next Respawn time to show countdown.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- ADMIN LOGIN MODAL -->
   <div class="modalWrap" id="loginWrap" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
@@ -676,7 +930,7 @@
             <button type="button" class="btn" id="btnLoginCancel">Cancel</button>
             <button class="btn primary" type="submit">Login</button>
           </div>
-          <div id="loginError" class="error hide">Wrong username or password.</div>
+          <div id="loginError" class="error hide">AH MALI BOBO!.</div>
         </form>
       </div>
     </div>
@@ -686,13 +940,19 @@
     // ---------------- Admin Auth (STATIC FRONTEND GATE) ----------------
     const ADMIN_USER = "nightfall";
     const ADMIN_PASS = "onlynightfall";
-    const AUTH_KEY = "l9_admin_authed_v2"; // sessionStorage only
+    const AUTH_KEY = "l9_admin_authed_v3"; // sessionStorage only
     const isAdmin = () => sessionStorage.getItem(AUTH_KEY) === "1";
     const setAdmin = (v) => sessionStorage.setItem(AUTH_KEY, v ? "1" : "0");
 
     // ---------- Storage ----------
-    const KEY = "l9_guild_management_v3";
-    const defaultState = () => ({ members: [], attendance: [], events: [], notes: "" });
+    const KEY = "l9_guild_management_v5";
+    const defaultState = () => ({
+      members: [],
+      attendance: [],
+      events: [],
+      notes: "",
+      bosses: []
+    });
 
     const load = () => {
       try{
@@ -703,7 +963,8 @@
           members: Array.isArray(data.members) ? data.members : [],
           attendance: Array.isArray(data.attendance) ? data.attendance : [],
           events: Array.isArray(data.events) ? data.events : [],
-          notes: typeof data.notes === "string" ? data.notes : ""
+          notes: typeof data.notes === "string" ? data.notes : "",
+          bosses: Array.isArray(data.bosses) ? data.bosses : []
         };
       }catch(e){ return defaultState(); }
     };
@@ -717,6 +978,7 @@
     const clamp = (n,min,max) => Math.max(min, Math.min(max, n));
     const fmtNum = (n) => { const x = Number(n); return Number.isFinite(x) ? x.toLocaleString() : ""; };
     const statusDot = (status) => status === "Active" ? "good" : status === "Trial" ? "warn" : "bad";
+
     function escapeHtml(str){
       return String(str ?? "")
         .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -748,26 +1010,48 @@
       window.__toastTimer = setTimeout(()=>{ el.style.opacity = "0"; }, 1400);
     }
 
+    // ---------- Time helpers ----------
+    function toMs(dtLocalStr){
+      if(!dtLocalStr) return null;
+      const d = new Date(dtLocalStr);
+      const ms = d.getTime();
+      return Number.isFinite(ms) ? ms : null;
+    }
+    function msToHMS(ms){
+      const s = Math.max(0, Math.floor(ms/1000));
+      const hh = String(Math.floor(s/3600)).padStart(2,"0");
+      const mm = String(Math.floor((s%3600)/60)).padStart(2,"0");
+      const ss = String(s%60).padStart(2,"0");
+      return `${hh}:${mm}:${ss}`;
+    }
+    function fmtNextRespawn(ms){
+      if(!ms) return "—";
+      const d = new Date(ms);
+      if(String(d) === "Invalid Date") return "—";
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,"0");
+      const dd = String(d.getDate()).padStart(2,"0");
+      let h = d.getHours();
+      const m = String(d.getMinutes()).padStart(2,"0");
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12; if(h===0) h = 12;
+      const hh = String(h).padStart(2,"0");
+      return `${yyyy}-${mm}-${dd} • ${hh}:${m} ${ampm}`;
+    }
+
     // ---------------- UI Gating ----------------
-    const applyAdminUI = () => {
+    function applyAdminUI(){
       const admin = isAdmin();
 
-      // Show admin-only widgets/buttons
       $$("[data-admin-only='1']").forEach(el => el.classList.toggle("hide", !admin));
-
-      // Viewer banner
       $("#viewerBanner").classList.toggle("hide", admin);
-
-      // Login/Logout buttons
       $("#btnAdminLogin").classList.toggle("hide", admin);
       $("#btnAdminLogout").classList.toggle("hide", !admin);
 
-      // Access label
       $("#accessLabel").innerHTML = admin
         ? `<span class="dot good"></span> Admin`
         : `<span class="dot warn"></span> Viewer`;
 
-      // Notes locking
       const notes = $("#notes");
       notes.readOnly = !admin;
       notes.placeholder = admin
@@ -775,24 +1059,20 @@
         : "Locked (admin only).";
       $("#notesHint").textContent = admin ? "Autosaves" : "Locked (admin only)";
 
-      // Members/attendance mode hints
       $("#membersModeHint").textContent = admin ? "Admin: edit enabled" : "Viewer: read-only";
       $("#attendanceModeHint").textContent = admin ? "Admin: manage logs" : "Viewer: read-only";
 
-      // If viewer tries to do admin-only action, those buttons are hidden anyway.
-      // Routes: only Settings is admin-only now
-      const hashRoute = (location.hash || "#dashboard").replace("#","");
-      if(!admin && hashRoute === "settings"){
-        location.hash = "#dashboard";
-      }
+      // Settings is admin-only route
+      const r = (location.hash || "#dashboard").replace("#","");
+      if(!admin && r === "settings") location.hash = "#dashboard";
 
-      // Quick add modal admin-only
-      if(!admin) closeQuickModal();
-    };
+      // Boss edit modal is admin-only
+      if(!admin) closeBossModal();
+    }
 
     // ---------- Routing ----------
-    const routes = ["dashboard","members","attendance","events","settings"];
-    const setRoute = (route) => {
+    const routes = ["dashboard","boss","members","attendance","events","settings"];
+    function setRoute(route){
       if(!routes.includes(route)) route = "dashboard";
       if(!isAdmin() && route === "settings"){
         route = "dashboard";
@@ -804,16 +1084,127 @@
         const a = document.querySelector(`[data-route="${r}"]`);
         if(a) a.classList.toggle("active", r === route);
       });
-    };
+    }
     window.addEventListener("hashchange", () => {
       const route = (location.hash || "#dashboard").replace("#","");
       setRoute(route);
-      applyAdminUI();
       renderAll($("#globalSearch").value || "");
+      applyAdminUI();
     });
 
-    // ---------- Render ----------
-    const renderMembers = (filter = "") => {
+    // ---------- Boss rendering ----------
+    function statusClass(s){
+      if(s==="Alive") return "alive";
+      if(s==="Respawning") return "resp";
+      if(s==="Dead") return "dead";
+      return "unk";
+    }
+
+    function bossAvatarHTML(b){
+      if(b.img){
+        return `<img alt="" src="${escapeHtml(b.img)}" onerror="this.remove(); this.parentElement.textContent='${escapeHtml((b.name||'?').slice(0,1).toUpperCase())}'">`;
+      }
+      return escapeHtml((b.name||"?").slice(0,1).toUpperCase());
+    }
+
+    function bossCardHTML(b){
+      const admin = isAdmin();
+      const now = Date.now();
+      const nextMs = Number(b.nextRespawnMs || 0) || null;
+      const showCountdown = (b.status === "Respawning" || b.status === "Dead") && nextMs;
+      const countdown = showCountdown ? msToHMS(nextMs - now) : "00:00:00";
+      const badge = showCountdown ? countdown : "—";
+
+      const chipText = (b.status === "Alive") ? "ALIVE"
+                    : (b.status === "Respawning") ? "RESPAWNING"
+                    : (b.status === "Dead") ? "DEAD"
+                    : "UNKNOWN";
+
+      const nextLine = (b.status === "Alive")
+        ? `Next Respawn: —`
+        : `Next Respawn: ${fmtNextRespawn(nextMs)}`;
+
+      return `
+        <div class="bossCard">
+          <div class="bossTop">
+            <div class="bossLeft">
+              <div class="bossAvatar">${bossAvatarHTML(b)}</div>
+              <div class="bossMeta">
+                <p class="bossName" title="${escapeHtml(b.name||"")}">${escapeHtml(b.name||"")}</p>
+                <div class="bossLvl">Level ${escapeHtml(String(b.level ?? "—"))}</div>
+              </div>
+            </div>
+            <span class="badgeTime" data-countdown-for="${escapeHtml(b.id)}">${escapeHtml(badge)}</span>
+          </div>
+
+          <div class="bossMid">
+            <span class="chip"><span class="dot ${b.status==="Alive" ? "good" : b.status==="Respawning" ? "warn" : b.status==="Dead" ? "bad" : ""}"></span>${escapeHtml(chipText)}</span>
+            <span class="statusPill ${statusClass(b.status)}">${escapeHtml(b.status)}</span>
+          </div>
+
+          <div class="bossBottom">
+            <span>${escapeHtml(nextLine)}</span>
+            <div class="bossActions">
+              ${admin
+                ? `<button class="btn" data-boss-edit="${escapeHtml(b.id)}">Edit</button>
+                   <button class="btn danger" data-boss-del="${escapeHtml(b.id)}">Del</button>`
+                : `<span class="lockHint">View only</span>`
+              }
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBosses(){
+      const bosses = Array.isArray(state.bosses) ? state.bosses : [];
+      $("#pillBoss").textContent = String(bosses.length);
+      $("#bossTotalPill").textContent = `${bosses.length} total`;
+      $("#statBosses").textContent = String(bosses.length);
+      $("#trendBosses").textContent = bosses.length ? `Alive ${bosses.filter(b=>b.status==="Alive").length} • Dead ${bosses.filter(b=>b.status==="Dead").length}` : "Add bosses (admin)";
+
+      const alive = bosses.filter(b => b.status === "Alive");
+      const resp = bosses.filter(b => b.status === "Respawning");
+      const dead = bosses.filter(b => b.status === "Dead");
+      const unk  = bosses.filter(b => b.status === "Unknown");
+
+      $("#countAlive").textContent = String(alive.length);
+      $("#countRespawning").textContent = String(resp.length);
+      $("#countDead").textContent = String(dead.length);
+      $("#countUnknown").textContent = String(unk.length);
+
+      $("#aliveList").outerHTML = alive.length
+        ? `<div id="aliveList" class="bossGrid">${alive.map(bossCardHTML).join("")}</div>`
+        : `<div id="aliveList" class="bossEmpty">No alive bosses</div>`;
+
+      $("#respawnList").outerHTML = resp.length
+        ? `<div id="respawnList" class="bossGrid">${resp.map(bossCardHTML).join("")}</div>`
+        : `<div id="respawnList" class="bossEmpty">No respawning bosses</div>`;
+
+      $("#deadGridWrap").innerHTML = dead.length
+        ? `<div class="bossGrid">${dead.map(bossCardHTML).join("")}</div>`
+        : `<div class="bossEmpty">No dead bosses</div>`;
+
+      $("#unknownGridWrap").innerHTML = unk.length
+        ? `<div class="bossGrid">${unk.map(bossCardHTML).join("")}</div>`
+        : `<div class="bossEmpty">No unknown bosses</div>`;
+    }
+
+    // Live countdown refresh
+    function tickCountdowns(){
+      const now = Date.now();
+      for(const el of document.querySelectorAll("[data-countdown-for]")){
+        const id = el.getAttribute("data-countdown-for");
+        const b = (state.bosses || []).find(x => x.id === id);
+        if(!b) continue;
+        const nextMs = Number(b.nextRespawnMs || 0) || null;
+        const show = (b.status === "Respawning" || b.status === "Dead") && nextMs;
+        el.textContent = show ? msToHMS(nextMs - now) : "—";
+      }
+    }
+
+    // ---------- Members ----------
+    function renderMembers(filter=""){
       const q = filter.trim().toLowerCase();
       const admin = isAdmin();
 
@@ -827,7 +1218,6 @@
           )
         : members;
 
-      // Dashboard quick table
       const dashRows = filtered.slice(0,6).map(m => `
         <tr>
           <td><strong>${escapeHtml(m.name)}</strong></td>
@@ -840,11 +1230,8 @@
         </tr>
       `).join("");
 
-      $("#membersTableBody").innerHTML = dashRows || `
-        <tr><td colspan="5" class="muted">No members yet.</td></tr>
-      `;
+      $("#membersTableBody").innerHTML = dashRows || `<tr><td colspan="5" class="muted">No members yet.</td></tr>`;
 
-      // Members page table (always visible)
       const allRows = filtered.map(m => `
         <tr>
           <td><strong>${escapeHtml(m.name)}</strong></td>
@@ -861,16 +1248,15 @@
         </tr>
       `).join("");
 
-      $("#allMembersBody").innerHTML = allRows || `
-        <tr><td colspan="6" class="muted">No roster data yet.</td></tr>
-      `;
+      $("#allMembersBody").innerHTML = allRows || `<tr><td colspan="6" class="muted">No roster data yet.</td></tr>`;
 
       $("#statMembers").textContent = String(state.members.length);
       $("#pillMembers").textContent = String(state.members.length);
       $("#trendMembers").textContent = state.members.length ? `${state.members.length} saved members` : "No data yet";
-    };
+    }
 
-    const renderAttendance = () => {
+    // ---------- Attendance ----------
+    function renderAttendance(){
       const logs = [...state.attendance].sort((a,b) => (b.ts||0) - (a.ts||0));
       const admin = isAdmin();
 
@@ -885,16 +1271,12 @@
             <td class="mono">${escapeHtml(String(attended))}</td>
             <td class="mono">${escapeHtml(String(total))}</td>
             <td><span class="tag"><span class="dot ${rate >= 80 ? "good" : rate >= 60 ? "warn" : "bad"}"></span>${rate}%</span></td>
-            <td>
-              ${admin ? `<button class="btn danger" data-del-att="${l.id}">Del</button>` : `<span class="muted">—</span>`}
-            </td>
+            <td>${admin ? `<button class="btn danger" data-del-att="${l.id}">Del</button>` : `<span class="muted">—</span>`}</td>
           </tr>
         `;
       }).join("");
 
-      $("#attendanceBody").innerHTML = rows || `
-        <tr><td colspan="6" class="muted">No logs yet.</td></tr>
-      `;
+      $("#attendanceBody").innerHTML = rows || `<tr><td colspan="6" class="muted">No logs yet.</td></tr>`;
 
       const recent = logs.slice(0,7);
       const avg = recent.length
@@ -905,14 +1287,15 @@
           },0) / recent.length)
         : 0;
 
-      $("#statAttendance").textContent = recent.length ? `${avg}%` : "0%";
-      $("#trendAttendance").textContent = recent.length ? `Avg from last ${recent.length} logs` : "No attendance logs yet";
-    };
+      // ✅ merged fix: avoid crashing if statAttendance card doesn't exist
+      const statAtt = $("#statAttendance");
+      if(statAtt) statAtt.textContent = recent.length ? `${avg}%` : "0%";
+    }
 
-    const renderEvents = () => {
+    // ---------- Events ----------
+    function renderEvents(){
       const now = new Date();
       const in14 = new Date(now.getTime() + 14*24*60*60*1000);
-
       const events = [...state.events].sort((a,b) => ((a.date||"") + (a.time||"")).localeCompare((b.date||"") + (b.time||"")));
       const admin = isAdmin();
 
@@ -923,15 +1306,11 @@
           <td><strong>${escapeHtml(e.title)}</strong></td>
           <td><span class="tag"><span class="dot ${e.type==="Raid" ? "warn" : "good"}"></span>${escapeHtml(e.type)}</span></td>
           <td class="muted">${escapeHtml(e.notes||"")}</td>
-          <td>
-            ${admin ? `<button class="btn danger" data-del-ev="${e.id}">Del</button>` : `<span class="muted">—</span>`}
-          </td>
+          <td>${admin ? `<button class="btn danger" data-del-ev="${e.id}">Del</button>` : `<span class="muted">—</span>`}</td>
         </tr>
       `).join("");
 
-      $("#eventsBody").innerHTML = rows || `
-        <tr><td colspan="6" class="muted">No events yet.</td></tr>
-      `;
+      $("#eventsBody").innerHTML = rows || `<tr><td colspan="6" class="muted">No events yet.</td></tr>`;
 
       const upcoming14 = events.filter(e => {
         const d = new Date(e.date + "T" + (e.time || "00:00"));
@@ -939,36 +1318,36 @@
       });
 
       $("#statEvents").textContent = String(upcoming14.length);
-      $("#trendEvents").textContent = upcoming14.length ? `Next 14 days: ${upcoming14.length}` : "No upcoming events";
-    };
+    }
 
-    const renderNotes = () => { $("#notes").value = state.notes || ""; };
-
-    const renderExportPreview = () => {
+    function renderNotes(){ $("#notes").value = state.notes || ""; }
+    function renderExportPreview(){
       const el = $("#exportPreview");
       if(!el) return;
       const preview = {
         members: state.members.slice(0, 3),
         attendance: state.attendance.slice(0, 3),
         events: state.events.slice(0, 3),
+        bosses: state.bosses.slice(0, 3),
         notes: (state.notes || "").slice(0, 120)
       };
       el.textContent = JSON.stringify(preview, null, 2);
-    };
+    }
 
-    const renderAll = (filter="") => {
+    function renderAll(filter=""){
       renderMembers(filter);
       renderAttendance();
       renderEvents();
       renderNotes();
+      renderBosses();
       renderExportPreview();
       applyAdminUI();
-    };
+    }
 
-    // ---------- Search ----------
+    // ---------- Global Search (simple) ----------
     $("#globalSearch").addEventListener("input", () => renderAll($("#globalSearch").value || ""));
 
-    // ---------- Admin Login Modal ----------
+    // ---------- Admin Login ----------
     const loginWrap = $("#loginWrap");
     const openLogin = () => {
       $("#loginError").classList.add("hide");
@@ -982,7 +1361,6 @@
       loginWrap.style.display = "none";
       loginWrap.setAttribute("aria-hidden","true");
     };
-
     $("#btnAdminLogin").addEventListener("click", openLogin);
     $("#btnAdminLogin2").addEventListener("click", openLogin);
     $("#btnCloseLogin").addEventListener("click", closeLogin);
@@ -993,7 +1371,7 @@
       e.preventDefault();
       const u = $("#loginUser").value.trim();
       const p = $("#loginPass").value;
-      if(u === "nightfall" && p === "onlynightfall"){
+      if(u === ADMIN_USER && p === ADMIN_PASS){
         setAdmin(true);
         closeLogin();
         toast("Admin unlocked.");
@@ -1010,7 +1388,7 @@
       renderAll($("#globalSearch").value || "");
     });
 
-    // ---------- Quick Add Modal (ADMIN ONLY) ----------
+    // ---------- Quick Add (admin-only) ----------
     const modalWrap = $("#modalWrap");
     const openQuickModal = () => {
       if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
@@ -1027,7 +1405,103 @@
     $("#btnQuickCancel").addEventListener("click", closeQuickModal);
     modalWrap.addEventListener("click", (e)=>{ if(e.target===modalWrap) closeQuickModal(); });
 
-    // ---------- Forms (ADMIN ONLY) ----------
+    $("#quickForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if(!isAdmin()){ toast("Admin only."); return; }
+      const name = $("#qName").value.trim();
+      if(!name) return;
+      state.members.push({
+        id: uid(),
+        name,
+        role: $("#qRole").value,
+        power: ($("#qPower").value||"").trim(),
+        status: $("#qStatus").value,
+        notes: "",
+        createdAt: Date.now()
+      });
+      e.target.reset();
+      closeQuickModal();
+      save();
+      renderAll($("#globalSearch").value || "");
+      toast("Member added.");
+    });
+
+    // ---------- Boss modal (admin-only) ----------
+    const bossWrap = $("#bossWrap");
+    function openBossModal(boss){
+      if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
+      $("#bossTitle").textContent = boss?.id ? "Edit Boss" : "Add Boss";
+      $("#bId").value = boss?.id || "";
+      $("#bName").value = boss?.name || "";
+      $("#bLevel").value = boss?.level ?? "";
+      $("#bStatus").value = boss?.status || "Unknown";
+      $("#bImg").value = boss?.img || "";
+      $("#bRespawn").value = boss?.nextRespawnMs ? new Date(boss.nextRespawnMs).toISOString().slice(0,16) : "";
+
+      $("#btnBossDelete").classList.toggle("hide", !boss?.id);
+
+      bossWrap.style.display = "flex";
+      bossWrap.setAttribute("aria-hidden","false");
+      $("#bName").focus();
+    }
+    function closeBossModal(){
+      bossWrap.style.display = "none";
+      bossWrap.setAttribute("aria-hidden","true");
+    }
+
+    $("#btnBossAdd").addEventListener("click", () => openBossModal(null));
+    $("#btnCloseBoss").addEventListener("click", closeBossModal);
+    $("#btnBossCancel").addEventListener("click", closeBossModal);
+    bossWrap.addEventListener("click", (e)=>{ if(e.target===bossWrap) closeBossModal(); });
+
+    $("#bossForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if(!isAdmin()){ toast("Admin only."); return; }
+
+      const id = $("#bId").value || uid();
+      const name = $("#bName").value.trim();
+      if(!name) return;
+
+      const levelRaw = ($("#bLevel").value || "").trim();
+      const level = levelRaw ? Number(levelRaw) : null;
+
+      const status = $("#bStatus").value;
+      const img = $("#bImg").value.trim();
+      const respawnMs = toMs($("#bRespawn").value);
+
+      const boss = {
+        id,
+        name,
+        level: Number.isFinite(level) ? level : (levelRaw ? levelRaw : "—"),
+        status,
+        img: img || "",
+        nextRespawnMs: respawnMs,
+        updatedAt: Date.now()
+      };
+
+      const idx = (state.bosses || []).findIndex(b => b.id === id);
+      if(idx >= 0) state.bosses[idx] = boss;
+      else state.bosses.push(boss);
+
+      save();
+      closeBossModal();
+      renderAll($("#globalSearch").value || "");
+      toast("Boss saved.");
+    });
+
+    $("#btnBossDelete").addEventListener("click", () => {
+      if(!isAdmin()){ toast("Admin only."); return; }
+      const id = $("#bId").value;
+      if(!id) return;
+      if(!confirm("Delete this boss?")) return;
+      state.bosses = (state.bosses || []).filter(b => b.id !== id);
+      save();
+      closeBossModal();
+      renderAll($("#globalSearch").value || "");
+      toast("Boss deleted.");
+    });
+
+    // ---------- Member / Attendance / Event admin actions ----------
     let editingMemberId = null;
 
     $("#memberForm")?.addEventListener("submit", (e) => {
@@ -1126,12 +1600,31 @@
       save();
     });
 
-    // ---------- Table actions ----------
+    // ---------- Table clicks (members/attendance/events/bosses) ----------
     document.addEventListener("click", (e) => {
-      const editId = e.target?.dataset?.edit;
-      const delId = e.target?.dataset?.del;
-      const delAtt = e.target?.dataset?.delAtt;
-      const delEv = e.target?.dataset?.delEv;
+      const t = e.target;
+
+      const editId = t?.dataset?.edit;
+      const delId = t?.dataset?.del;
+      const delAtt = t?.dataset?.delAtt;
+      const delEv = t?.dataset?.delEv;
+
+      const bossEdit = t?.dataset?.bossEdit;
+      const bossDel = t?.dataset?.bossDel;
+
+      if(bossEdit){
+        const b = (state.bosses || []).find(x => x.id === bossEdit);
+        if(!b) return;
+        openBossModal(b);
+      }
+      if(bossDel){
+        if(!isAdmin()){ toast("Admin only."); return; }
+        if(!confirm("Delete this boss?")) return;
+        state.bosses = (state.bosses || []).filter(b => b.id !== bossDel);
+        save();
+        renderAll($("#globalSearch").value || "");
+        toast("Boss deleted.");
+      }
 
       if(editId){
         if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
@@ -1214,7 +1707,8 @@
           members: Array.isArray(data.members) ? data.members : [],
           attendance: Array.isArray(data.attendance) ? data.attendance : [],
           events: Array.isArray(data.events) ? data.events : [],
-          notes: typeof data.notes === "string" ? data.notes : ""
+          notes: typeof data.notes === "string" ? data.notes : "",
+          bosses: Array.isArray(data.bosses) ? data.bosses : []
         };
         save();
         renderAll($("#globalSearch").value || "");
@@ -1238,6 +1732,10 @@
     setRoute(route);
     renderAll("");
 
+    // Countdown updater
+    setInterval(() => {
+      tickCountdowns();
+    }, 1000);
   </script>
 </body>
 </html>
