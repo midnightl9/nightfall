@@ -837,6 +837,12 @@
                   <label>Date</label>
                   <input id="aDate" type="date" required />
                 </div>
+                <div class="field full">
+                  <label>Members who attended</label>
+                  <div id="aMembersWrap" style="max-height:220px;overflow:auto;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.12);">
+                    <div class="muted" style="font-size:12px;">No members yet. Add members in the Members tab.</div>
+                  </div>
+                </div>
                 <div class="field">
                   <label>Attended (count)</label>
                   <input id="aAttended" placeholder="e.g., 25" inputmode="numeric" />
@@ -1260,25 +1266,64 @@ const members = [...state.members].sort((a,b) => {
       $("#trendMembers").textContent = state.members.length ? `${state.members.length} saved members` : "No data yet";
     }
 
+    function renderAttendanceMemberPicker(filter = ""){
+  const wrap = $("#aMembersWrap");
+  if(!wrap) return;
+
+  const q = (filter || "").trim().toLowerCase();
+
+  // only show Active/Trial (edit if you want)
+  const roster = [...state.members]
+    .filter(m => (m.name || "").trim().length > 0)
+    .filter(m => ["Active","Trial"].includes(m.status || "Active"));
+
+  const filtered = q
+    ? roster.filter(m =>
+        (m.name||"").toLowerCase().includes(q) ||
+        (m.role||"").toLowerCase().includes(q)
+      )
+    : roster;
+
+  if(!filtered.length){
+    wrap.innerHTML = `<div class="muted" style="font-size:12px;">No members to select.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = filtered.map(m => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;">
+      <input type="checkbox" name="aMembers" value="${escapeHtml(m.id)}" />
+      <span>
+        <strong>${escapeHtml(m.name)}</strong>
+        <span class="muted">(${escapeHtml(m.role)})</span>
+      </span>
+    </label>
+  `).join("");
+}
+
     // ---------- Attendance ----------
     function renderAttendance(){
   const logs = [...state.attendance].sort((a,b) => (b.ts||0) - (a.ts||0));
   const admin = isAdmin();
+
+  // map member id -> name
+  const nameById = new Map(state.members.map(m => [m.id, m.name]));
 
   const rows = logs.map(l => {
     const attended = Number(l.attended||0);
     const total = Math.max(1, Number(l.total||1));
     const rate = clamp(Math.round((attended/total)*100), 0, 100);
 
-    // ✅ NEW: members count (supports future upgrade where l.members is stored)
-    const membersCount = Array.isArray(l.members) ? l.members.length : null;
+    // ✅ NEW: show member names (falls back if unknown)
+    const memberNames = Array.isArray(l.members)
+      ? l.members.map(id => nameById.get(id) || "(Unknown)").join(", ")
+      : "";
 
     return `
       <tr>
         <td class="mono">${escapeHtml(l.date)}</td>
         <td>${escapeHtml(l.boss)}</td>
 
-        <td class="mono">${membersCount !== null ? escapeHtml(String(membersCount)) : "—"}</td>
+        <td class="muted">${memberNames ? escapeHtml(memberNames) : "—"}</td>
 
         <td class="mono">${escapeHtml(String(attended))}</td>
         <td class="mono">${escapeHtml(String(total))}</td>
@@ -1295,7 +1340,6 @@ const members = [...state.members].sort((a,b) => {
     `;
   }).join("");
 
-  // ✅ colspan updated from 6 → 7 because we added a column
   $("#attendanceBody").innerHTML = rows || `<tr><td colspan="7" class="muted">No logs yet.</td></tr>`;
 }
 
@@ -1342,16 +1386,20 @@ const members = [...state.members].sort((a,b) => {
     }
 
     function renderAll(filter=""){
-      renderMembers(filter);
-      renderAttendance();
-      renderEvents();
-      renderNotes();
-      renderExportPreview();
-      applyAdminUI();
+  renderMembers(filter);
 
-      // NEW boss timers stats (updates sidebar pill + dashboard)
-      if(window.btUpdateStats) window.btUpdateStats();
-    }
+  // ✅ NEW: build the member checkbox list in Attendance tab
+  renderAttendanceMemberPicker(filter);
+
+  renderAttendance();
+  renderEvents();
+  renderNotes();
+  renderExportPreview();
+  applyAdminUI();
+
+  // NEW boss timers stats (updates sidebar pill + dashboard)
+  if(window.btUpdateStats) window.btUpdateStats();
+}
 
     // ---------- Global Search ----------
     $("#globalSearch").addEventListener("input", () => renderAll($("#globalSearch").value || ""));
@@ -1477,22 +1525,36 @@ const members = [...state.members].sort((a,b) => {
     });
 
     $("#attendanceForm")?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if(!isAdmin()){ toast("Admin only."); return; }
-      const boss = $("#aBoss").value.trim();
-      const date = $("#aDate").value;
-      const attended = Number($("#aAttended").value || 0);
-      const total = Number($("#aTotal").value || Math.max(1, state.members.length || 1));
-      if(!boss || !date) return;
+  e.preventDefault();
+  if(!isAdmin()){ toast("Admin only."); return; }
 
-      state.attendance.push({ id: uid(), boss, date, attended: Math.max(0, attended), total: Math.max(1, total), ts: Date.now() });
-      e.target.reset();
-      $("#aDate").value = date;
+  const boss = $("#aBoss").value.trim();
+  const date = $("#aDate").value;
+  const attended = Number($("#aAttended").value || 0);
+  const total = Number($("#aTotal").value || Math.max(1, state.members.length || 1));
+  if(!boss || !date) return;
 
-      save();
-      renderAll($("#globalSearch").value || "");
-      toast("Attendance logged.");
-    });
+  // ✅ NEW: collect checked member IDs
+  const selectedIds = Array.from(document.querySelectorAll('input[name="aMembers"]:checked'))
+    .map(cb => cb.value);
+
+  state.attendance.push({
+    id: uid(),
+    boss,
+    date,
+    members: selectedIds, // ✅ NEW: saved into the log
+    attended: Math.max(0, attended),
+    total: Math.max(1, total),
+    ts: Date.now()
+  });
+
+  e.target.reset();
+  $("#aDate").value = date;
+
+  save();
+  renderAll($("#globalSearch").value || "");
+  toast("Attendance logged.");
+});
 
     $("#btnClearAttendance")?.addEventListener("click", () => {
       if(!isAdmin()){ toast("Admin only."); return; }
