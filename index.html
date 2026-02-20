@@ -518,6 +518,172 @@
     grid-template-columns: 1fr !important; /* date on top, time below */
   }
 }
+
+/* ===========================
+   Attendance UI (NEW) — scoped
+   Only affects #view-attendance
+=========================== */
+#view-attendance .att-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+#view-attendance .att-cards{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:14px;
+}
+
+#view-attendance .att-card{
+  border-radius: var(--radius2);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow: var(--shadow);
+  padding:14px 16px;
+  position:relative;
+  overflow:hidden;
+}
+#view-attendance .att-card::before{
+  content:"";
+  position:absolute;
+  left:0; top:0; right:0;
+  height:3px;
+  background: rgba(110,168,254,.85);
+  opacity:.9;
+}
+
+#view-attendance .att-kicker{
+  font-size:12px;
+  color: var(--muted);
+  letter-spacing:.4px;
+  font-weight:700;
+}
+#view-attendance .att-value{
+  margin-top:6px;
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:.2px;
+  color: var(--text);
+}
+
+#view-attendance .att-tools{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  justify-content:space-between;
+}
+
+#view-attendance .att-search{
+  flex:1;
+  min-width:260px;
+  max-width:520px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  padding:10px 12px;
+}
+#view-attendance .att-search input{
+  width:100%;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--text);
+}
+
+#view-attendance .att-admin{
+  flex:1;
+  min-width:320px;
+  border-radius: var(--radius2);
+  background: rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.10);
+  padding:12px 12px 10px;
+}
+#view-attendance .att-adminRow{
+  display:flex;
+  gap:10px;
+  align-items:flex-end;
+  flex-wrap:wrap;
+}
+#view-attendance .att-adminField{
+  flex:1;
+  min-width:160px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+#view-attendance .att-tableCard{
+  border-radius: var(--radius2);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow: var(--shadow);
+  overflow:hidden;
+}
+
+#view-attendance .att-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+#view-attendance .att-table thead th{
+  text-align:left;
+  padding:12px 12px;
+  font-size:12px;
+  color: rgba(167,176,214,.85);
+  letter-spacing:.35px;
+  font-weight:800;
+  background: rgba(255,255,255,.03);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  white-space:nowrap;
+}
+#view-attendance .att-table tbody td{
+  padding:12px 12px;
+  font-size:13px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  vertical-align:middle;
+}
+#view-attendance .att-table tbody tr:hover{
+  background: rgba(255,255,255,.03);
+}
+#view-attendance .att-name{
+  font-weight:900;
+  color: var(--text);
+}
+#view-attendance .att-right{
+  text-align:right;
+}
+#view-attendance .att-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  color: rgba(231,236,255,.92);
+  font-weight:800;
+}
+#view-attendance .att-btn{
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  border-radius: 12px;
+  padding:8px 10px;
+  cursor:pointer;
+}
+#view-attendance .att-btn:hover{
+  border-color: rgba(255,255,255,.20);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 980px){
+  #view-attendance .att-cards{ grid-template-columns: 1fr; }
+  #view-attendance .att-tools{ flex-direction:column; align-items:stretch; }
+  #view-attendance .att-admin{ min-width:unset; }
+}
+
   </style>
 </head>
 
@@ -814,37 +980,93 @@
       </section>
 
       <!-- ATTENDANCE -->
-      <section id="view-attendance" class="hide">
-        <div class="grid">
-          <div class="card" style="grid-column: span 5;" data-admin-only="1">
-            <div class="hd">
-          <div class="card" style="grid-column: span 7;">
-            <div class="hd">
-              <div>
-                <h3>Attendance Logs</h3>
-                <p id="attendanceModeHint"></p>
-              </div>
-              <span class="tag"><span class="dot"></span> history</span>
-            </div>
-            <div class="bd">
-              <table class="table" aria-label="Attendance table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Boss</th>
-                    <th>Members</th> <!-- ✅ NEW -->
-                    <th>Attended</th>
-                    <th>Total</th>
-                    <th>Rate</th>
-                    <th style="width:120px;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="attendanceBody"></tbody>
-              </table>
-            </div>
+<section id="view-attendance" class="hide">
+  <!-- Header like the screenshot -->
+  <div style="margin-bottom:14px;">
+    <div style="font-size:20px;font-weight:900;letter-spacing:.2px;">Attendance</div>
+    <div class="muted" style="margin-top:4px;font-size:13px;">Guild member attendance records</div>
+  </div>
+
+  <!-- Summary cards + search -->
+  <div class="att-wrap">
+    <div class="att-cards">
+      <div class="att-card">
+        <div class="att-kicker">TOTAL GUILD FUND</div>
+        <div class="att-value mono" id="attTotalFund">$0</div>
+      </div>
+
+      <div class="att-card">
+        <div class="att-kicker">ATTENDANCE SHARE (<span id="attAttendPctLabel">90</span>%)</div>
+        <div class="att-value mono" id="attAttendanceShare">$0</div>
+      </div>
+
+      <div class="att-card">
+        <div class="att-kicker">MANAGEMENT SHARE (<span id="attMgmtPctLabel">10</span>%)</div>
+        <div class="att-value mono" id="attManagementShare">$0</div>
+      </div>
+    </div>
+
+    <div class="att-tools">
+      <div class="att-search">
+        <input id="attendanceSearch" placeholder="Search member name" autocomplete="off" />
+      </div>
+
+      <!-- Admin-only: fund settings -->
+      <div class="att-admin" data-admin-only="1">
+        <div class="att-adminRow">
+          <div class="att-adminField">
+            <label>Total Fund (USDT)</label>
+            <input id="attFundInput" type="number" step="0.01" min="0" placeholder="e.g. 32" />
           </div>
+          <div class="att-adminField">
+            <label>Management %</label>
+            <input id="attMgmtPctInput" type="number" step="1" min="0" max="100" placeholder="10" />
+          </div>
+          <button class="btn primary" id="attSaveFund">Save</button>
         </div>
-      </section>
+        <div class="muted" style="font-size:12px;margin-top:8px;">
+          Viewers can see stats + table. Only admin can edit fund settings.
+        </div>
+      </div>
+    </div>
+
+    <!-- Table like screenshot -->
+    <div class="att-tableCard">
+      <table class="att-table" aria-label="Attendance leaderboard table">
+        <thead>
+          <tr>
+            <th style="width:220px;">NAME</th>
+            <th>KRANSIA</th>
+            <th>FIELD BOSS</th>
+            <th>GUILD BOSS</th>
+            <th>GUILD VS GUILD</th>
+            <th>TOTAL POINTS</th>
+            <th>PERCENTAGE</th>
+            <th>USDT SHARE</th>
+            <th style="width:140px;">VIEW</th>
+          </tr>
+        </thead>
+        <tbody id="attendanceLeaderboardBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- View Details modal -->
+<div class="modalWrap" id="attDetailWrap" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="attDetailTitle">
+    <div class="hd">
+      <div>
+        <h3 id="attDetailTitle" style="margin:0;font-size:14px;">Member Details</h3>
+        <p class="muted" style="margin:4px 0 0;font-size:12px;">Attendance breakdown</p>
+      </div>
+      <button class="btn" id="attDetailClose">Close</button>
+    </div>
+    <div class="bd">
+      <div id="attDetailBody" class="muted" style="font-size:13px;"></div>
+    </div>
+  </div>
+</div>
 
       <!-- EVENTS -->
       <section id="view-events" class="hide">
@@ -1044,7 +1266,9 @@
       attendance: [],
       events: [],
       notes: "",
-      bosses: [] // legacy (no longer used by Boss tab)
+      bosses: [],
+      fundTotal: 0,
+      mgmtPct: 10,
     });
 
     const load = () => {
@@ -1057,7 +1281,9 @@
           attendance: Array.isArray(data.attendance) ? data.attendance : [],
           events: Array.isArray(data.events) ? data.events : [],
           notes: typeof data.notes === "string" ? data.notes : "",
-          bosses: Array.isArray(data.bosses) ? data.bosses : []
+          bosses: Array.isArray(data.bosses) ? data.bosses : [],
+          fundTotal: Number(data.fundTotal || 0),
+          mgmtPct: Number(data.mgmtPct ?? 10)
         };
       }catch(e){ return defaultState(); }
     };
@@ -1105,30 +1331,48 @@
 
     // ---------------- UI Gating ----------------
     function applyAdminUI(){
-      const admin = isAdmin();
+  const admin = isAdmin();
 
-      $$("[data-admin-only='1']").forEach(el => el.classList.toggle("hide", !admin));
-      $("#viewerBanner").classList.toggle("hide", admin);
-      $("#btnAdminLogin").classList.toggle("hide", admin);
-      $("#btnAdminLogout").classList.toggle("hide", !admin);
+  $$("[data-admin-only='1']").forEach(el => el.classList.toggle("hide", !admin));
 
-      $("#accessLabel").innerHTML = admin
-        ? `<span class="dot good"></span> Admin`
-        : `<span class="dot warn"></span> Viewer`;
+  const viewerBanner = $("#viewerBanner");
+  if (viewerBanner) viewerBanner.classList.toggle("hide", admin);
 
-      const notes = $("#notes");
-      notes.readOnly = !admin;
-      notes.placeholder = admin
-        ? "Example:\n• Raid time: 9:00 PM\n• Bring resistance pots\n• New recruits interview on Friday"
-        : "Locked (admin only).";
-      $("#notesHint").textContent = admin ? "Autosaves" : "Locked (admin only)";
+  const btnAdminLogin = $("#btnAdminLogin");
+  if (btnAdminLogin) btnAdminLogin.classList.toggle("hide", admin);
 
-      $("#membersModeHint").textContent = admin ? "Admin: edit enabled" : "Viewer: read-only";
-      $("#attendanceModeHint").textContent = admin ? "Admin: manage logs" : "Viewer: read-only";
+  const btnAdminLogout = $("#btnAdminLogout");
+  if (btnAdminLogout) btnAdminLogout.classList.toggle("hide", !admin);
 
-      const r = (location.hash || "#dashboard").replace("#","");
-      if(!admin && r === "settings") location.hash = "#dashboard";
-    }
+  const accessLabel = $("#accessLabel");
+  if (accessLabel){
+    accessLabel.innerHTML = admin
+      ? `<span class="dot good"></span> Admin`
+      : `<span class="dot warn"></span> Viewer`;
+  }
+
+  const notes = $("#notes");
+  if (notes){
+    notes.readOnly = !admin;
+    notes.placeholder = admin
+      ? "Example:\n• Raid time: 9:00 PM\n• Bring resistance pots\n• New recruits interview on Friday"
+      : "Locked (admin only).";
+  }
+
+  const notesHint = $("#notesHint");
+  if (notesHint) notesHint.textContent = admin ? "Autosaves" : "Locked (admin only)";
+
+  const membersModeHint = $("#membersModeHint");
+  if (membersModeHint) membersModeHint.textContent = admin ? "Admin: edit enabled" : "Viewer: read-only";
+
+  const attendanceModeHint = $("#attendanceModeHint");
+  if (attendanceModeHint){
+    attendanceModeHint.textContent = admin ? "Admin: manage logs" : "Viewer: read-only";
+  }
+
+  const r = (location.hash || "#dashboard").replace("#","");
+  if(!admin && r === "settings") location.hash = "#dashboard";
+}
 
     // ---------- Routing ----------
     const routes = ["dashboard","boss","members","attendance","events","settings"];
@@ -1260,46 +1504,103 @@ const members = [...state.members].sort((a,b) => {
 }
 
     // ---------- Attendance ----------
-    function renderAttendance(){
-  const logs = [...state.attendance].sort((a,b) => (b.ts||0) - (a.ts||0));
-  const admin = isAdmin();
+    function money(n){
+  const x = Number(n);
+  if(!Number.isFinite(x)) return "$0";
+  return "$" + x.toFixed(2).replace(/\.00$/, "");
+}
 
-  // map member id -> name
-  const nameById = new Map(state.members.map(m => [m.id, m.name]));
+function renderAttendanceLeaderboard(filter=""){
+  const q = (filter || "").trim().toLowerCase();
 
-  const rows = logs.map(l => {
-    const attended = Number(l.attended||0);
-    const total = Math.max(1, Number(l.total||1));
-    const rate = clamp(Math.round((attended/total)*100), 0, 100);
+  const totalFund = Number(state.fundTotal || 0);
+  const mgmtPct = clamp(Number(state.mgmtPct ?? 10), 0, 100);
+  const attendPct = 100 - mgmtPct;
 
-    // ✅ NEW: show member names (falls back if unknown)
-    const memberNames = Array.isArray(l.members)
-      ? l.members.map(id => nameById.get(id) || "(Unknown)").join(", ")
-      : "";
+  // Header cards
+  const totalFundEl = document.getElementById("attTotalFund");
+  const attShareEl  = document.getElementById("attAttendanceShare");
+  const mgmtShareEl = document.getElementById("attManagementShare");
+  const attendPctLabel = document.getElementById("attAttendPctLabel");
+  const mgmtPctLabel = document.getElementById("attMgmtPctLabel");
+
+  if(attendPctLabel) attendPctLabel.textContent = String(attendPct);
+  if(mgmtPctLabel) mgmtPctLabel.textContent = String(mgmtPct);
+
+  const attendancePool = totalFund * (attendPct / 100);
+  const mgmtPool = totalFund * (mgmtPct / 100);
+
+  if(totalFundEl) totalFundEl.textContent = money(totalFund);
+  if(attShareEl) attShareEl.textContent = money(attendancePool);
+  if(mgmtShareEl) mgmtShareEl.textContent = money(mgmtPool);
+
+  // Build a quick map: memberId => counts
+  const byId = new Map(state.members.map(m => [m.id, {
+    id: m.id,
+    name: m.name || "",
+    kransia: 0,
+    fieldBoss: 0,
+    guildBoss: 0,
+    gvg: 0,
+    total: 0
+  }]));
+
+  // Your logs store selected member IDs in l.members[]
+  // We’ll count each appearance as 1 point (simple + matches screenshot style)
+  for(const log of state.attendance || []){
+    const ids = Array.isArray(log.members) ? log.members : [];
+    for(const id of ids){
+      const row = byId.get(id);
+      if(!row) continue;
+
+      // If you later add a "type" field, you can route points properly.
+      // For now: everything counts as Field Boss by default.
+      row.fieldBoss += 1;
+      row.total += 1;
+    }
+  }
+
+  // Convert to array + apply search filter
+  let rows = Array.from(byId.values());
+
+  if(q){
+    rows = rows.filter(r => (r.name || "").toLowerCase().includes(q));
+  }
+
+  // Sort: highest total points first
+  rows.sort((a,b) => (b.total - a.total) || String(a.name).localeCompare(String(b.name)));
+
+  // Sum total points for percentage + payout
+  const sumPoints = rows.reduce((acc,r) => acc + (r.total || 0), 0) || 0;
+
+  const tbody = document.getElementById("attendanceLeaderboardBody");
+  if(!tbody) return;
+
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="9" class="muted" style="padding:14px 12px;">No members found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const pct = sumPoints ? ((r.total / sumPoints) * 100) : 0;
+    const usdt = attendancePool * (pct / 100);
 
     return `
       <tr>
-        <td class="mono">${escapeHtml(l.date)}</td>
-        <td>${escapeHtml(l.boss)}</td>
-
-        <td class="muted">${memberNames ? escapeHtml(memberNames) : "—"}</td>
-
-        <td class="mono">${escapeHtml(String(attended))}</td>
-        <td class="mono">${escapeHtml(String(total))}</td>
-
+        <td class="att-name">${escapeHtml(r.name || "(No name)")}</td>
+        <td class="mono">${r.kransia}</td>
+        <td class="mono">${r.fieldBoss}</td>
+        <td class="mono">${r.guildBoss}</td>
+        <td class="mono">${r.gvg}</td>
+        <td class="mono">${r.total}</td>
+        <td class="mono">${pct.toFixed(2)}%</td>
+        <td class="mono">${money(usdt)}</td>
         <td>
-          <span class="tag">
-            <span class="dot ${rate >= 80 ? "good" : rate >= 60 ? "warn" : "bad"}"></span>
-            ${rate}%
-          </span>
+          <button class="att-btn" data-att-view="${escapeHtml(r.id)}">View Details</button>
         </td>
-
-        <td>${admin ? `<button class="btn danger" data-del-att="${l.id}">Del</button>` : `<span class="muted">—</span>`}</td>
       </tr>
     `;
   }).join("");
-
-  $("#attendanceBody").innerHTML = rows || `<tr><td colspan="7" class="muted">No logs yet.</td></tr>`;
 }
 
     // ---------- Events ----------
@@ -1350,11 +1651,18 @@ const members = [...state.members].sort((a,b) => {
   // ✅ NEW: build the member checkbox list in Attendance tab
   renderAttendanceMemberPicker(filter);
 
-  renderAttendance();
+  renderAttendanceLeaderboard(document.getElementById("attendanceSearch")?.value || "");
   renderEvents();
   renderNotes();
   renderExportPreview();
   applyAdminUI();
+
+  if(isAdmin()){
+  const fi = document.getElementById("attFundInput");
+  const mi = document.getElementById("attMgmtPctInput");
+  if(fi) fi.value = String(state.fundTotal || 0);
+  if(mi) mi.value = String(state.mgmtPct ?? 10);
+}
 
   // NEW boss timers stats (updates sidebar pill + dashboard)
   if(window.btUpdateStats) window.btUpdateStats();
@@ -1646,7 +1954,9 @@ const members = [...state.members].sort((a,b) => {
           attendance: Array.isArray(data.attendance) ? data.attendance : [],
           events: Array.isArray(data.events) ? data.events : [],
           notes: typeof data.notes === "string" ? data.notes : "",
-          bosses: Array.isArray(data.bosses) ? data.bosses : []
+          bosses: Array.isArray(data.bosses) ? data.bosses : [],
+          fundTotal: Number(data.fundTotal || 0),
+  mgmtPct: Number(data.mgmtPct ?? 10)
         };
         save();
         renderAll($("#globalSearch").value || "");
@@ -1669,6 +1979,85 @@ const members = [...state.members].sort((a,b) => {
     const route = (location.hash || "#dashboard").replace("#","");
     setRoute(route);
     renderAll("");
+
+    // Attendance search
+document.getElementById("attendanceSearch")?.addEventListener("input", (e) => {
+  renderAttendanceLeaderboard(e.target.value || "");
+});
+
+// Admin: save fund settings
+document.getElementById("attSaveFund")?.addEventListener("click", () => {
+  if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
+
+  const fund = Number(document.getElementById("attFundInput")?.value || 0);
+  const mgmt = Number(document.getElementById("attMgmtPctInput")?.value ?? 10);
+
+  state.fundTotal = Math.max(0, fund);
+  state.mgmtPct = clamp(mgmt, 0, 100);
+
+  save();
+  toast("Fund settings saved.");
+  renderAttendanceLeaderboard(document.getElementById("attendanceSearch")?.value || "");
+});
+
+// Details modal
+const attWrap = document.getElementById("attDetailWrap");
+const attClose = () => {
+  attWrap.style.display = "none";
+  attWrap.setAttribute("aria-hidden","true");
+};
+document.getElementById("attDetailClose")?.addEventListener("click", attClose);
+attWrap?.addEventListener("click", (e)=>{ if(e.target===attWrap) attClose(); });
+
+// Table click: View Details
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-att-view]");
+  if(!btn) return;
+
+  const id = btn.getAttribute("data-att-view");
+  const member = state.members.find(m => m.id === id);
+  const name = member?.name || "(Unknown)";
+
+  // Simple details: list logs where this member is included
+  const logs = (state.attendance || [])
+    .filter(l => Array.isArray(l.members) && l.members.includes(id))
+    .sort((a,b) => (b.ts||0) - (a.ts||0))
+    .slice(0, 30);
+
+  const body = document.getElementById("attDetailBody");
+  const title = document.getElementById("attDetailTitle");
+
+  if(title) title.textContent = `${name} — Details`;
+
+  if(!logs.length){
+    body.innerHTML = `<div class="muted">No attendance records yet.</div>`;
+  } else {
+    body.innerHTML = `
+      <div style="margin-bottom:10px;">
+        <span class="tag"><span class="dot good"></span> ${logs.length} logs</span>
+      </div>
+      <table class="table" style="border-radius:14px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Boss</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${logs.map(l => `
+            <tr>
+              <td class="mono">${escapeHtml(l.date || "")}</td>
+              <td>${escapeHtml(l.boss || "")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  attWrap.style.display = "flex";
+  attWrap.setAttribute("aria-hidden","false");
+});
 
     /* =========================================================
        Boss Timers (NEW) — embedded inside Boss tab
