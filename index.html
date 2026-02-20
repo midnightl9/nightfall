@@ -818,44 +818,6 @@
         <div class="grid">
           <div class="card" style="grid-column: span 5;" data-admin-only="1">
             <div class="hd">
-              <div>
-                <h3>Log Boss Attendance</h3>
-                <p>Admin only</p>
-              </div>
-              <span class="tag"><span class="dot warn"></span> boss</span>
-            </div>
-            <div class="bd">
-              <form id="attendanceForm" class="form">
-                <div class="field">
-                  <label>Boss / Activity</label>
-                  <input id="aBoss" placeholder="e.g., Medea Raid" required />
-                </div>
-                <div class="field">
-                  <label>Date</label>
-                  <input id="aDate" type="date" required />
-                </div>
-                <div class="field full">
-                  <label>Members who attended</label>
-                  <div id="aMembersWrap" style="max-height:220px;overflow:auto;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.12);">
-                    <div class="muted" style="font-size:12px;">No members yet. Add members in the Members tab.</div>
-                  </div>
-                </div>
-                <div class="field">
-                  <label>Attended (count)</label>
-                  <input id="aAttended" placeholder="e.g., 25" inputmode="numeric" />
-                </div>
-                <div class="field">
-                  <label>Total Roster (count)</label>
-                  <input id="aTotal" placeholder="e.g., 35" inputmode="numeric" />
-                </div>
-                <div class="field full" style="display:flex;flex-direction:row;gap:10px;justify-content:flex-end;">
-                  <button type="button" class="btn" id="btnClearAttendance">Clear</button>
-                  <button class="btn primary" type="submit">Save Log</button>
-                </div>
-              </form>
-            </div>
-          </div>
-
           <div class="card" style="grid-column: span 7;">
             <div class="hd">
               <div>
