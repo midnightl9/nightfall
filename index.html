@@ -392,7 +392,6 @@
           <button class="btn danger" id="btnReset" data-admin-only="1">Reset</button>
 
           <button class="btn" id="btnAdminLogin">Admin Login</button>
-          <!-- ✅ merged change: mark logout as admin-only for cleaner gating -->
           <button class="btn ghost hide" id="btnAdminLogout" data-admin-only="1">Logout</button>
         </div>
       </header>
@@ -560,7 +559,7 @@
         </div>
       </section>
 
-      <!-- MEMBERS (VISIBLE TO ALL, VIEW-ONLY FOR VISITORS) -->
+      <!-- MEMBERS -->
       <section id="view-members" class="hide">
         <div class="grid">
           <div class="card" style="grid-column: span 5;" data-admin-only="1">
@@ -638,7 +637,7 @@
         </div>
       </section>
 
-      <!-- ATTENDANCE (VISIBLE TO ALL, VIEW-ONLY FOR VISITORS) -->
+      <!-- ATTENDANCE -->
       <section id="view-attendance" class="hide">
         <div class="grid">
           <div class="card" style="grid-column: span 5;" data-admin-only="1">
@@ -702,7 +701,7 @@
         </div>
       </section>
 
-      <!-- EVENTS (PUBLIC VIEW; ADMIN CAN ADD/DELETE) -->
+      <!-- EVENTS -->
       <section id="view-events" class="hide">
         <div class="grid">
           <div class="card" style="grid-column: span 5;" data-admin-only="1">
@@ -885,14 +884,43 @@
               <option value="Unknown">Unknown</option>
             </select>
           </div>
+
+          <!-- ✅ Scheduled dropdown -->
+          <div class="field">
+            <label>Scheduled</label>
+            <select id="bScheduled">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+
+          <!-- ✅ NEW: Reset hours (per boss) -->
+          <div class="field">
+            <label>Reset Hours</label>
+            <select id="bResetHours">
+              <option value="10">10</option>
+              <option value="18">18</option>
+              <option value="21">21</option>
+              <option value="24">24</option>
+              <option value="29">29</option>
+              <option value="32">32</option>
+              <option value="35">35</option>
+              <option value="37">37</option>
+              <option value="48">48</option>
+              <option value="62">62</option>
+            </select>
+          </div>
+
           <div class="field">
             <label>Next Respawn</label>
             <input id="bRespawn" type="datetime-local" />
           </div>
+
           <div class="field full">
             <label>Image URL (optional)</label>
             <input id="bImg" placeholder="https://…" />
           </div>
+
           <div class="field full" style="display:flex;justify-content:flex-end;gap:10px;">
             <button type="button" class="btn danger" id="btnBossDelete">Delete</button>
             <button type="button" class="btn" id="btnBossCancel">Cancel</button>
@@ -964,7 +992,9 @@
           attendance: Array.isArray(data.attendance) ? data.attendance : [],
           events: Array.isArray(data.events) ? data.events : [],
           notes: typeof data.notes === "string" ? data.notes : "",
-          bosses: Array.isArray(data.bosses) ? data.bosses : []
+          bosses: Array.isArray(data.bosses)
+            ? data.bosses.map(b => ({ ...b, resetHours: Math.max(1, Number(b.resetHours || 2)) }))
+            : []
         };
       }catch(e){ return defaultState(); }
     };
@@ -1093,6 +1123,29 @@
     });
 
     // ---------- Boss rendering ----------
+    const FIVE_MIN_MS = 5 * 60 * 1000;
+
+    function bossSectionFor(b, nowMs){
+      const nextMs = Number(b.nextRespawnMs || 0) || null;
+
+      // Timer still up:
+      // - > 5 minutes left => Dead section
+      // - <= 5 minutes left => Respawning section
+      if(nextMs && nowMs < nextMs){
+        const remaining = nextMs - nowMs;
+        return remaining <= FIVE_MIN_MS ? "Respawning" : "Dead";
+      }
+
+      // Timer done (or no timer)
+      if(b.status === "Alive") return "Alive";
+      if(b.status === "Unknown") return "Unknown";
+
+      // If timer finished and they were Dead/Respawning, treat as Alive (spawned)
+      if(nextMs && nowMs >= nextMs) return "Alive";
+
+      return b.status || "Unknown";
+    }
+
     function statusClass(s){
       if(s==="Alive") return "alive";
       if(s==="Respawning") return "resp";
@@ -1111,18 +1164,20 @@
       const admin = isAdmin();
       const now = Date.now();
       const nextMs = Number(b.nextRespawnMs || 0) || null;
-      const showCountdown = (b.status === "Respawning" || b.status === "Dead") && nextMs;
+
+      const showCountdown = nextMs && now < nextMs;
       const countdown = showCountdown ? msToHMS(nextMs - now) : "00:00:00";
       const badge = showCountdown ? countdown : "—";
 
-      const chipText = (b.status === "Alive") ? "ALIVE"
-                    : (b.status === "Respawning") ? "RESPAWNING"
-                    : (b.status === "Dead") ? "DEAD"
+      const section = bossSectionFor(b, now);
+      const chipText = (section === "Alive") ? "ALIVE"
+                    : (section === "Respawning") ? "RESPAWNING"
+                    : (section === "Dead") ? "DEAD"
                     : "UNKNOWN";
 
-      const nextLine = (b.status === "Alive")
-        ? `Next Respawn: —`
-        : `Next Respawn: ${fmtNextRespawn(nextMs)}`;
+      const nextLine = showCountdown
+        ? `Next Respawn: ${fmtNextRespawn(nextMs)}`
+        : `Next Respawn: —`;
 
       return `
         <div class="bossCard">
@@ -1138,8 +1193,14 @@
           </div>
 
           <div class="bossMid">
-            <span class="chip"><span class="dot ${b.status==="Alive" ? "good" : b.status==="Respawning" ? "warn" : b.status==="Dead" ? "bad" : ""}"></span>${escapeHtml(chipText)}</span>
-            <span class="statusPill ${statusClass(b.status)}">${escapeHtml(b.status)}</span>
+            <span class="chip">
+              <span class="dot ${section==="Alive" ? "good" : section==="Respawning" ? "warn" : section==="Dead" ? "bad" : ""}"></span>
+              ${escapeHtml(chipText)}
+            </span>
+            <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+              <span class="statusPill ${statusClass(section)}">${escapeHtml(section)}</span>
+              ${(b.scheduled === "Yes") ? `<span class="tag" title="Scheduled"><span class="dot warn"></span>Scheduled</span>` : ``}
+            </div>
           </div>
 
           <div class="bossBottom">
@@ -1147,6 +1208,7 @@
             <div class="bossActions">
               ${admin
                 ? `<button class="btn" data-boss-edit="${escapeHtml(b.id)}">Edit</button>
+                   <button class="btn" data-boss-kill="${escapeHtml(b.id)}">Killed Now</button>
                    <button class="btn danger" data-boss-del="${escapeHtml(b.id)}">Del</button>`
                 : `<span class="lockHint">View only</span>`
               }
@@ -1161,12 +1223,16 @@
       $("#pillBoss").textContent = String(bosses.length);
       $("#bossTotalPill").textContent = `${bosses.length} total`;
       $("#statBosses").textContent = String(bosses.length);
-      $("#trendBosses").textContent = bosses.length ? `Alive ${bosses.filter(b=>b.status==="Alive").length} • Dead ${bosses.filter(b=>b.status==="Dead").length}` : "Add bosses (admin)";
 
-      const alive = bosses.filter(b => b.status === "Alive");
-      const resp = bosses.filter(b => b.status === "Respawning");
-      const dead = bosses.filter(b => b.status === "Dead");
-      const unk  = bosses.filter(b => b.status === "Unknown");
+      const nowMs = Date.now();
+      const alive = bosses.filter(b => bossSectionFor(b, nowMs) === "Alive");
+      const resp  = bosses.filter(b => bossSectionFor(b, nowMs) === "Respawning");
+      const dead  = bosses.filter(b => bossSectionFor(b, nowMs) === "Dead");
+      const unk   = bosses.filter(b => bossSectionFor(b, nowMs) === "Unknown");
+
+      $("#trendBosses").textContent = bosses.length
+        ? `Alive ${alive.length} • Dead ${dead.length}`
+        : "Add bosses (admin)";
 
       $("#countAlive").textContent = String(alive.length);
       $("#countRespawning").textContent = String(resp.length);
@@ -1190,16 +1256,33 @@
         : `<div class="bossEmpty">No unknown bosses</div>`;
     }
 
-    // Live countdown refresh
+    // Live countdown refresh + auto flip to Alive when timer ends
     function tickCountdowns(){
       const now = Date.now();
+      let changed = false;
+
       for(const el of document.querySelectorAll("[data-countdown-for]")){
         const id = el.getAttribute("data-countdown-for");
         const b = (state.bosses || []).find(x => x.id === id);
         if(!b) continue;
+
         const nextMs = Number(b.nextRespawnMs || 0) || null;
-        const show = (b.status === "Respawning" || b.status === "Dead") && nextMs;
+
+        // If timer finished, flip to Alive automatically
+        if(nextMs && now >= nextMs && (b.status === "Dead" || b.status === "Respawning")){
+          b.status = "Alive";
+          b.nextRespawnMs = null;
+          b.updatedAt = Date.now();
+          changed = true;
+        }
+
+        const show = nextMs && now < nextMs;
         el.textContent = show ? msToHMS(nextMs - now) : "—";
+      }
+
+      if(changed){
+        save();
+        renderAll($("#globalSearch").value || "");
       }
     }
 
@@ -1287,7 +1370,6 @@
           },0) / recent.length)
         : 0;
 
-      // ✅ merged fix: avoid crashing if statAttendance card doesn't exist
       const statAtt = $("#statAttendance");
       if(statAtt) statAtt.textContent = recent.length ? `${avg}%` : "0%";
     }
@@ -1435,6 +1517,8 @@
       $("#bName").value = boss?.name || "";
       $("#bLevel").value = boss?.level ?? "";
       $("#bStatus").value = boss?.status || "Unknown";
+      $("#bScheduled").value = boss?.scheduled || "No";
+      $("#bResetHours").value = String(Number(boss?.resetHours || 2));
       $("#bImg").value = boss?.img || "";
       $("#bRespawn").value = boss?.nextRespawnMs ? new Date(boss.nextRespawnMs).toISOString().slice(0,16) : "";
 
@@ -1466,16 +1550,33 @@
       const level = levelRaw ? Number(levelRaw) : null;
 
       const status = $("#bStatus").value;
+      const scheduled = $("#bScheduled").value;
+      const resetHours = Math.max(1, Number($("#bResetHours").value || 2));
       const img = $("#bImg").value.trim();
       const respawnMs = toMs($("#bRespawn").value);
+
+      // Store "original hours set" as a duration (ms) if they set a future respawn time
+      const nowMs = Date.now();
+      let respawnDurationMs = (state.bosses || []).find(x => x.id === id)?.respawnDurationMs || null;
+      if(respawnMs && respawnMs > nowMs){
+        respawnDurationMs = respawnMs - nowMs;
+      }
+
+      // ✅ If still none, use per-boss reset hours so Killed Now always works
+      if(!respawnDurationMs){
+        respawnDurationMs = resetHours * 60 * 60 * 1000;
+      }
 
       const boss = {
         id,
         name,
         level: Number.isFinite(level) ? level : (levelRaw ? levelRaw : "—"),
         status,
+        scheduled,
+        resetHours,
         img: img || "",
         nextRespawnMs: respawnMs,
+        respawnDurationMs: respawnDurationMs,
         updatedAt: Date.now()
       };
 
@@ -1611,6 +1712,7 @@
 
       const bossEdit = t?.dataset?.bossEdit;
       const bossDel = t?.dataset?.bossDel;
+      const bossKill = t?.dataset?.bossKill;
 
       if(bossEdit){
         const b = (state.bosses || []).find(x => x.id === bossEdit);
@@ -1624,6 +1726,25 @@
         save();
         renderAll($("#globalSearch").value || "");
         toast("Boss deleted.");
+      }
+
+      // ✅ Killed Now uses EACH BOSS reset hours
+      if(bossKill){
+        if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
+        const b = (state.bosses || []).find(x => x.id === bossKill);
+        if(!b) return;
+
+        const h = Math.max(1, Number(b.resetHours || 2));
+        const dur = h * 60 * 60 * 1000;
+
+        b.status = "Dead";
+        b.nextRespawnMs = Date.now() + dur;
+        b.respawnDurationMs = dur;
+        b.updatedAt = Date.now();
+
+        save();
+        renderAll($("#globalSearch").value || "");
+        toast(`Killed Now: timer reset (${h}h).`);
       }
 
       if(editId){
@@ -1708,7 +1829,9 @@
           attendance: Array.isArray(data.attendance) ? data.attendance : [],
           events: Array.isArray(data.events) ? data.events : [],
           notes: typeof data.notes === "string" ? data.notes : "",
-          bosses: Array.isArray(data.bosses) ? data.bosses : []
+          bosses: Array.isArray(data.bosses)
+            ? data.bosses.map(b => ({ ...b, resetHours: Math.max(1, Number(b.resetHours || 2)) }))
+            : []
         };
         save();
         renderAll($("#globalSearch").value || "");
