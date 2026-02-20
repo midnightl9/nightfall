@@ -1191,7 +1191,28 @@
       const q = filter.trim().toLowerCase();
       const admin = isAdmin();
 
-      const members = [...state.members].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+      const toPower = (v) => {
+  // Handles "125000" or "125,000" or empty
+  const n = Number(String(v ?? "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+
+const members = [...state.members].sort((a,b) => {
+  const pa = toPower(a.power);
+  const pb = toPower(b.power);
+
+  // Highest power first
+  if (pb !== pa) return pb - pa;
+
+  // Optional tie-breakers (pick what you prefer):
+  // 1) Active first (optional)
+  // const sa = (a.status === "Active") ? 0 : (a.status === "Trial") ? 1 : 2;
+  // const sb = (b.status === "Active") ? 0 : (b.status === "Trial") ? 1 : 2;
+  // if (sa !== sb) return sa - sb;
+
+  // 2) Name A→Z
+  return String(a.name || "").localeCompare(String(b.name || ""));
+});
       const filtered = q
         ? members.filter(m =>
             (m.name||"").toLowerCase().includes(q) ||
