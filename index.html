@@ -1,9 +1,10 @@
+<!-- ✅ MERGED VERSION (Scheduled Day/Time + Black Dropdowns + Scheduled Timer Roll-forward) -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LordNine Guild Management</title>
+  <title>Nightfall Guild Management</title>
   <meta name="description" content="Guild management dashboard (static) - members, attendance, events, boss timers." />
   <style>
     :root{
@@ -151,6 +152,11 @@
       color:var(--text);outline:none;
     }
     input::placeholder,textarea::placeholder{color:rgba(167,176,214,.65)}
+
+    /* ✅ Dropdown background black */
+    select{ background:#000 !important; }
+    select option{ background:#000; color:var(--text); }
+
     .rowbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 0}
     .muted{color:var(--muted)}
     .mono{font-family:var(--mono)}
@@ -885,7 +891,7 @@
             </select>
           </div>
 
-          <!-- ✅ Scheduled dropdown -->
+          <!-- Scheduled dropdown -->
           <div class="field">
             <label>Scheduled</label>
             <select id="bScheduled">
@@ -894,7 +900,53 @@
             </select>
           </div>
 
-          <!-- ✅ NEW: Reset hours (per boss) -->
+          <!-- ✅ NEW: Scheduled Day/Time (shows when Scheduled = Yes) -->
+          <div class="field full hide" id="bScheduleBlock">
+            <label>Scheduled Day & Time</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <select id="bScheduleDay">
+                <option value="0">Sunday</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+              </select>
+
+              <select id="bScheduleTime">
+                <option value="00:00">12:00 AM</option>
+                <option value="01:00">01:00 AM</option>
+                <option value="02:00">02:00 AM</option>
+                <option value="03:00">03:00 AM</option>
+                <option value="04:00">04:00 AM</option>
+                <option value="05:00">05:00 AM</option>
+                <option value="06:00">06:00 AM</option>
+                <option value="07:00">07:00 AM</option>
+                <option value="08:00">08:00 AM</option>
+                <option value="09:00">09:00 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">01:00 PM</option>
+                <option value="14:00">02:00 PM</option>
+                <option value="15:00">03:00 PM</option>
+                <option value="16:00">04:00 PM</option>
+                <option value="17:00">05:00 PM</option>
+                <option value="18:00">06:00 PM</option>
+                <option value="19:00">07:00 PM</option>
+                <option value="20:00">08:00 PM</option>
+                <option value="21:00">09:00 PM</option>
+                <option value="22:00">10:00 PM</option>
+                <option value="23:00">11:00 PM</option>
+              </select>
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:8px;">
+              This boss will always count down to the next scheduled spawn time.
+            </div>
+          </div>
+
+          <!-- Reset hours (per boss) -->
           <div class="field">
             <label>Reset Hours</label>
             <select id="bResetHours">
@@ -993,7 +1045,12 @@
           events: Array.isArray(data.events) ? data.events : [],
           notes: typeof data.notes === "string" ? data.notes : "",
           bosses: Array.isArray(data.bosses)
-            ? data.bosses.map(b => ({ ...b, resetHours: Math.max(1, Number(b.resetHours || 2)) }))
+            ? data.bosses.map(b => ({
+                ...b,
+                resetHours: Math.max(1, Number(b.resetHours || 2)),
+                scheduleDay: (b.scheduleDay ?? null),
+                scheduleTime: (b.scheduleTime ?? null)
+              }))
             : []
         };
       }catch(e){ return defaultState(); }
@@ -1069,6 +1126,36 @@
       return `${yyyy}-${mm}-${dd} • ${hh}:${m} ${ampm}`;
     }
 
+    // ✅ NEW: Next weekly scheduled time
+    function nextWeeklyMs(dayIndex, hhmm){
+      const [hh, mm] = (hhmm || "00:00").split(":").map(n => Number(n));
+      const now = new Date();
+      const target = new Date(now);
+
+      target.setSeconds(0,0);
+      target.setHours(hh || 0, mm || 0, 0, 0);
+
+      const currentDay = target.getDay();
+      let addDays = (dayIndex - currentDay + 7) % 7;
+
+      if(addDays === 0 && target.getTime() <= now.getTime()){
+        addDays = 7;
+      }
+      target.setDate(target.getDate() + addDays);
+      return target.getTime();
+    }
+
+    function applyScheduledFieldsUI(){
+      const scheduled = $("#bScheduled")?.value === "Yes";
+      $("#bScheduleBlock")?.classList.toggle("hide", !scheduled);
+
+      const resp = $("#bRespawn");
+      if(resp){
+        resp.disabled = scheduled;
+        if(scheduled) resp.value = "";
+      }
+    }
+
     // ---------------- UI Gating ----------------
     function applyAdminUI(){
       const admin = isAdmin();
@@ -1092,11 +1179,9 @@
       $("#membersModeHint").textContent = admin ? "Admin: edit enabled" : "Viewer: read-only";
       $("#attendanceModeHint").textContent = admin ? "Admin: manage logs" : "Viewer: read-only";
 
-      // Settings is admin-only route
       const r = (location.hash || "#dashboard").replace("#","");
       if(!admin && r === "settings") location.hash = "#dashboard";
 
-      // Boss edit modal is admin-only
       if(!admin) closeBossModal();
     }
 
@@ -1128,19 +1213,14 @@
     function bossSectionFor(b, nowMs){
       const nextMs = Number(b.nextRespawnMs || 0) || null;
 
-      // Timer still up:
-      // - > 5 minutes left => Dead section
-      // - <= 5 minutes left => Respawning section
       if(nextMs && nowMs < nextMs){
         const remaining = nextMs - nowMs;
         return remaining <= FIVE_MIN_MS ? "Respawning" : "Dead";
       }
 
-      // Timer done (or no timer)
       if(b.status === "Alive") return "Alive";
       if(b.status === "Unknown") return "Unknown";
 
-      // If timer finished and they were Dead/Respawning, treat as Alive (spawned)
       if(nextMs && nowMs >= nextMs) return "Alive";
 
       return b.status || "Unknown";
@@ -1256,7 +1336,7 @@
         : `<div class="bossEmpty">No unknown bosses</div>`;
     }
 
-    // Live countdown refresh + auto flip to Alive when timer ends
+    // Live countdown refresh + scheduled roll-forward OR auto flip to Alive
     function tickCountdowns(){
       const now = Date.now();
       let changed = false;
@@ -1268,12 +1348,18 @@
 
         const nextMs = Number(b.nextRespawnMs || 0) || null;
 
-        // If timer finished, flip to Alive automatically
+        // ✅ If timer finished:
         if(nextMs && now >= nextMs && (b.status === "Dead" || b.status === "Respawning")){
-          b.status = "Alive";
-          b.nextRespawnMs = null;
-          b.updatedAt = Date.now();
-          changed = true;
+          if(b.scheduled === "Yes" && Number.isFinite(Number(b.scheduleDay)) && b.scheduleTime){
+            b.nextRespawnMs = nextWeeklyMs(Number(b.scheduleDay), b.scheduleTime);
+            b.updatedAt = Date.now();
+            changed = true;
+          } else {
+            b.status = "Alive";
+            b.nextRespawnMs = null;
+            b.updatedAt = Date.now();
+            changed = true;
+          }
         }
 
         const show = nextMs && now < nextMs;
@@ -1426,7 +1512,7 @@
       applyAdminUI();
     }
 
-    // ---------- Global Search (simple) ----------
+    // ---------- Global Search ----------
     $("#globalSearch").addEventListener("input", () => renderAll($("#globalSearch").value || ""));
 
     // ---------- Admin Login ----------
@@ -1470,7 +1556,7 @@
       renderAll($("#globalSearch").value || "");
     });
 
-    // ---------- Quick Add (admin-only) ----------
+    // ---------- Quick Add ----------
     const modalWrap = $("#modalWrap");
     const openQuickModal = () => {
       if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
@@ -1508,8 +1594,11 @@
       toast("Member added.");
     });
 
-    // ---------- Boss modal (admin-only) ----------
+    // ---------- Boss modal ----------
     const bossWrap = $("#bossWrap");
+
+    $("#bScheduled").addEventListener("change", applyScheduledFieldsUI);
+
     function openBossModal(boss){
       if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
       $("#bossTitle").textContent = boss?.id ? "Edit Boss" : "Add Boss";
@@ -1520,9 +1609,19 @@
       $("#bScheduled").value = boss?.scheduled || "No";
       $("#bResetHours").value = String(Number(boss?.resetHours || 2));
       $("#bImg").value = boss?.img || "";
-      $("#bRespawn").value = boss?.nextRespawnMs ? new Date(boss.nextRespawnMs).toISOString().slice(0,16) : "";
+
+      // ✅ Load scheduled day/time (defaults)
+      $("#bScheduleDay").value = String(Number(boss?.scheduleDay ?? 0));
+      $("#bScheduleTime").value = boss?.scheduleTime || "00:00";
+
+      // If scheduled, we don't show manual respawn; else show stored respawn
+      $("#bRespawn").value = (boss?.scheduled === "Yes")
+        ? ""
+        : (boss?.nextRespawnMs ? new Date(boss.nextRespawnMs).toISOString().slice(0,16) : "");
 
       $("#btnBossDelete").classList.toggle("hide", !boss?.id);
+
+      applyScheduledFieldsUI();
 
       bossWrap.style.display = "flex";
       bossWrap.setAttribute("aria-hidden","false");
@@ -1553,16 +1652,24 @@
       const scheduled = $("#bScheduled").value;
       const resetHours = Math.max(1, Number($("#bResetHours").value || 2));
       const img = $("#bImg").value.trim();
-      const respawnMs = toMs($("#bRespawn").value);
 
-      // Store "original hours set" as a duration (ms) if they set a future respawn time
+      let respawnMs = null;
+      let scheduleDay = null;
+      let scheduleTime = null;
+
+      if(scheduled === "Yes"){
+        scheduleDay = Number($("#bScheduleDay").value || 0);
+        scheduleTime = $("#bScheduleTime").value || "00:00";
+        respawnMs = nextWeeklyMs(scheduleDay, scheduleTime);
+      } else {
+        respawnMs = toMs($("#bRespawn").value);
+      }
+
       const nowMs = Date.now();
       let respawnDurationMs = (state.bosses || []).find(x => x.id === id)?.respawnDurationMs || null;
       if(respawnMs && respawnMs > nowMs){
         respawnDurationMs = respawnMs - nowMs;
       }
-
-      // ✅ If still none, use per-boss reset hours so Killed Now always works
       if(!respawnDurationMs){
         respawnDurationMs = resetHours * 60 * 60 * 1000;
       }
@@ -1573,6 +1680,8 @@
         level: Number.isFinite(level) ? level : (levelRaw ? levelRaw : "—"),
         status,
         scheduled,
+        scheduleDay,
+        scheduleTime,
         resetHours,
         img: img || "",
         nextRespawnMs: respawnMs,
@@ -1701,7 +1810,7 @@
       save();
     });
 
-    // ---------- Table clicks (members/attendance/events/bosses) ----------
+    // ---------- Table clicks ----------
     document.addEventListener("click", (e) => {
       const t = e.target;
 
@@ -1728,7 +1837,7 @@
         toast("Boss deleted.");
       }
 
-      // ✅ Killed Now uses EACH BOSS reset hours
+      // Killed Now uses EACH BOSS reset hours (scheduled bosses still use resetHours when killed)
       if(bossKill){
         if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
         const b = (state.bosses || []).find(x => x.id === bossKill);
@@ -1830,7 +1939,12 @@
           events: Array.isArray(data.events) ? data.events : [],
           notes: typeof data.notes === "string" ? data.notes : "",
           bosses: Array.isArray(data.bosses)
-            ? data.bosses.map(b => ({ ...b, resetHours: Math.max(1, Number(b.resetHours || 2)) }))
+            ? data.bosses.map(b => ({
+                ...b,
+                resetHours: Math.max(1, Number(b.resetHours || 2)),
+                scheduleDay: (b.scheduleDay ?? null),
+                scheduleTime: (b.scheduleTime ?? null)
+              }))
             : []
         };
         save();
