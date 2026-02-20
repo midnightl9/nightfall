@@ -494,72 +494,32 @@
       #view-boss .bt-miniBtn{ width: 40px; }
       #view-boss .bt-nextBossTitle{ font-size: 22px; }
     }
-    /* ===========================
-   Boss Timers — Compact Cards
-   Shrink card content ~30%
-   EXCEPT: boss name, timer, next spawn
-=========================== */
-#view-boss .bt-card{
-  /* tighter overall spacing to fit content */
-  padding: 9px;                 /* was 12px */
-  gap: 6px;                     /* was 8px */
+/* ===== Fix overflow inside boss cards ===== */
+#view-boss .bt-card .bt-controls,
+#view-boss .bt-card .bt-dateRow{
+  min-width: 0 !important; /* allow grids to shrink */
 }
 
-#view-boss .bt-card::before{
-  inset: 6px;                   /* was 8px */
-  border-radius: 9px;           /* was 10px */
+#view-boss .bt-card .bt-input{
+  min-width: 0 !important; /* OVERRIDES the 150px min-width */
+  width: 100% !important;
 }
 
-/* 1) Shrink EVERYTHING inside the card by ~30% */
-#view-boss .bt-card *{
-  font-size: 0.7em !important;
-  line-height: 1.15 !important;
+#view-boss .bt-card .bt-controls{
+  grid-template-columns: 1fr 36px !important; /* smaller button column */
+  gap: 6px !important;
 }
 
-/* 2) Restore sizes for the 3 exceptions */
-#view-boss .bt-bossName{
-  font-size: 14px !important;   /* keep your original boss name size */
-  line-height: 1.1 !important;
+#view-boss .bt-card .bt-miniBtn{
+  width: 36px !important;
+  height: 30px !important;
 }
 
-#view-boss .bt-timer{
-  font-size: 20px !important;   /* keep original timer size */
-  line-height: 1.15 !important;
-}
-
-#view-boss .bt-nextLine{
-  font-size: 11px !important;   /* keep original next spawn line size */
-  line-height: 1.2 !important;
-}
-
-/* Fit controls better */
-#view-boss .bt-controls{
-  gap: 6px;                     /* was 8px */
-  grid-template-columns: 1fr 38px; /* was 1fr 44px */
-}
-
-#view-boss .bt-miniBtn{
-  width: 38px !important;       /* was 44px */
-  height: 28px !important;      /* was 34px */
-  border-radius: 9px;
-}
-
-#view-boss .bt-input,
-#view-boss .bt-btn,
-#view-boss .bt-stackBtn{
-  height: 28px;                 /* was 34px */
-  border-radius: 10px;
-  padding: 0 8px;
-}
-
-/* Keep the "NEXT: <time>" highlight readable */
-#view-boss .bt-nextLine span{
-  font-size: 1em !important;    /* same as bt-nextLine */
-}
-
-/* Footer fits without wrapping too aggressively */
-#view-boss .bt-footer{
-  gap: 8px;
+/* If you want ZERO chance of overflow: stack date/time on small cards */
+@media (max-width: 520px){
+  #view-boss .bt-card .bt-dateRow{
+    grid-template-columns: 1fr !important; /* date on top, time below */
+  }
 }
   </style>
 </head>
