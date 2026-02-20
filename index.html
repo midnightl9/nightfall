@@ -867,6 +867,7 @@
                   <tr>
                     <th>Date</th>
                     <th>Boss</th>
+                    <th>Members</th> <!-- ✅ NEW -->
                     <th>Attended</th>
                     <th>Total</th>
                     <th>Rate</th>
@@ -1261,27 +1262,42 @@ const members = [...state.members].sort((a,b) => {
 
     // ---------- Attendance ----------
     function renderAttendance(){
-      const logs = [...state.attendance].sort((a,b) => (b.ts||0) - (a.ts||0));
-      const admin = isAdmin();
+  const logs = [...state.attendance].sort((a,b) => (b.ts||0) - (a.ts||0));
+  const admin = isAdmin();
 
-      const rows = logs.map(l => {
-        const attended = Number(l.attended||0);
-        const total = Math.max(1, Number(l.total||1));
-        const rate = clamp(Math.round((attended/total)*100), 0, 100);
-        return `
-          <tr>
-            <td class="mono">${escapeHtml(l.date)}</td>
-            <td>${escapeHtml(l.boss)}</td>
-            <td class="mono">${escapeHtml(String(attended))}</td>
-            <td class="mono">${escapeHtml(String(total))}</td>
-            <td><span class="tag"><span class="dot ${rate >= 80 ? "good" : rate >= 60 ? "warn" : "bad"}"></span>${rate}%</span></td>
-            <td>${admin ? `<button class="btn danger" data-del-att="${l.id}">Del</button>` : `<span class="muted">—</span>`}</td>
-          </tr>
-        `;
-      }).join("");
+  const rows = logs.map(l => {
+    const attended = Number(l.attended||0);
+    const total = Math.max(1, Number(l.total||1));
+    const rate = clamp(Math.round((attended/total)*100), 0, 100);
 
-      $("#attendanceBody").innerHTML = rows || `<tr><td colspan="6" class="muted">No logs yet.</td></tr>`;
-    }
+    // ✅ NEW: members count (supports future upgrade where l.members is stored)
+    const membersCount = Array.isArray(l.members) ? l.members.length : null;
+
+    return `
+      <tr>
+        <td class="mono">${escapeHtml(l.date)}</td>
+        <td>${escapeHtml(l.boss)}</td>
+
+        <td class="mono">${membersCount !== null ? escapeHtml(String(membersCount)) : "—"}</td>
+
+        <td class="mono">${escapeHtml(String(attended))}</td>
+        <td class="mono">${escapeHtml(String(total))}</td>
+
+        <td>
+          <span class="tag">
+            <span class="dot ${rate >= 80 ? "good" : rate >= 60 ? "warn" : "bad"}"></span>
+            ${rate}%
+          </span>
+        </td>
+
+        <td>${admin ? `<button class="btn danger" data-del-att="${l.id}">Del</button>` : `<span class="muted">—</span>`}</td>
+      </tr>
+    `;
+  }).join("");
+
+  // ✅ colspan updated from 6 → 7 because we added a column
+  $("#attendanceBody").innerHTML = rows || `<tr><td colspan="7" class="muted">No logs yet.</td></tr>`;
+}
 
     // ---------- Events ----------
     function renderEvents(){
