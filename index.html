@@ -1334,17 +1334,29 @@ onAuthStateChanged(auth, (user) => {
 
   // ✅ Boss timers from cloud (your existing logic)
   if (data.bossState) {
-    const ok =
-      data.bossState &&
-      Array.isArray(data.bossState.manual) &&
-      Array.isArray(data.bossState.scheduled);
+  const ok =
+    data.bossState &&
+    Array.isArray(data.bossState.manual) &&
+    Array.isArray(data.bossState.scheduled);
 
-    if (ok) {
+  if (ok) {
+    // ✅ Only overwrite local if cloud is newer
+    let localUpdatedAt = 0;
+    try {
+      const localRaw = localStorage.getItem("bossTimers_v1");
+      if (localRaw) localUpdatedAt = Number(JSON.parse(localRaw).updatedAt || 0);
+    } catch (_) {}
+
+    const cloudUpdatedAt = Number(data.bossState.updatedAt || 0);
+
+    if (cloudUpdatedAt >= localUpdatedAt) {
       localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
       if (window.btLoadFromStorage) window.btLoadFromStorage();
       else window.__pendingBossLoad = true;
     }
+    // else: local is newer, ignore this snapshot to prevent "undo"
   }
+}
 
   // ✅ Re-render
   window.renderAll?.(document.getElementById("globalSearch")?.value || "");
@@ -2339,23 +2351,33 @@ function dateFromPHInput(dateVal, timeVal){
       }
 
       function loadState(){
-        try{
-          const raw = localStorage.getItem(LS_KEY);
-          if(!raw){
-            return { manual: normalizeManual(DEFAULT_MANUAL), scheduled: ensureIds(DEFAULT_SCHEDULED) };
-          }
-          const parsed = JSON.parse(raw);
-          const manualRaw = Array.isArray(parsed.manual) ? parsed.manual : DEFAULT_MANUAL;
-          const scheduledRaw = Array.isArray(parsed.scheduled) ? parsed.scheduled : DEFAULT_SCHEDULED;
-          return { manual: normalizeManual(manualRaw), scheduled: ensureIds(scheduledRaw) };
-        }catch{
-          return { manual: normalizeManual(DEFAULT_MANUAL), scheduled: ensureIds(DEFAULT_SCHEDULED) };
-        }
-      }
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw){
+      return { manual: normalizeManual(DEFAULT_MANUAL), scheduled: ensureIds(DEFAULT_SCHEDULED), updatedAt: 0 };
+    }
+    const parsed = JSON.parse(raw);
+    const manualRaw = Array.isArray(parsed.manual) ? parsed.manual : DEFAULT_MANUAL;
+    const scheduledRaw = Array.isArray(parsed.scheduled) ? parsed.scheduled : DEFAULT_SCHEDULED;
+
+    return {
+      manual: normalizeManual(manualRaw),
+      scheduled: ensureIds(scheduledRaw),
+      updatedAt: Number(parsed.updatedAt || 0)
+    };
+  }catch{
+    return { manual: normalizeManual(DEFAULT_MANUAL), scheduled: ensureIds(DEFAULT_SCHEDULED), updatedAt: 0 };
+  }
+}
       let btState = loadState();
 
 const saveState = () => {
+  // ✅ attach a timestamp so we can resolve cloud/local conflicts
+  btState.updatedAt = Date.now();
+
   localStorage.setItem(LS_KEY, JSON.stringify(btState));
+
+  // sync to Firebase
   if (window.syncToCloud) window.syncToCloud();
 };
 
@@ -2631,10 +2653,10 @@ if (window.__pendingBossLoad) {
             </div>
 
             <div class="bt-btnStack">
-              <button class="bt-stackBtn" data-action="killedNow" data-id="${escapeAttr2(id)}">Killed Now</button>
-              <button class="bt-stackBtn" data-action="setKill" data-id="${escapeAttr2(id)}">Set Kill</button>
-              <button class="bt-stackBtn" data-action="setNext" data-id="${escapeAttr2(id)}">Set Next</button>
-            </div>
+  <button type="button" class="bt-stackBtn" data-action="killedNow" data-id="${escapeAttr2(id)}">Killed Now</button>
+  <button type="button" class="bt-stackBtn" data-action="setKill" data-id="${escapeAttr2(id)}">Set Kill</button>
+  <button type="button" class="bt-stackBtn" data-action="setNext" data-id="${escapeAttr2(id)}">Set Next</button>
+</div>
 
             <div class="bt-footer">
               <div>Last restart: ${b.lastRestart ? escapeHtml2(formatShortPH(new Date(b.lastRestart))) : "--"}</div>
