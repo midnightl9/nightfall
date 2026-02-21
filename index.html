@@ -1439,6 +1439,11 @@ let state = window.state; // optional, but keep if your code expects `state`
     const fmtNum = (n) => { const x = Number(n); return Number.isFinite(x) ? x.toLocaleString() : ""; };
     const statusDot = (status) => status === "Active" ? "good" : status === "Trial" ? "warn" : "bad";
 
+    function closestEl(target, selector){
+  const el = (target && target.nodeType === 1) ? target : target?.parentElement;
+  return el ? el.closest(selector) : null;
+}
+
     function escapeHtml(str){
       return String(str ?? "")
         .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -2004,7 +2009,7 @@ document.addEventListener("click", (e) => {
   const t = e.target;
 
   // ✅ Attendance +/- controls
-  const adjBtn = e.target.closest("[data-att-adj='1']");
+  const adjBtn = closestEl(e.target, "[data-att-adj='1']");
   if (adjBtn) {
     if (!isAdmin()) {
       toast("Admin only.");
@@ -2177,7 +2182,7 @@ attWrap?.addEventListener("click", (e)=>{ if(e.target===attWrap) attClose(); });
 
 // Table click: View Details
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-att-view]");
+  const btn = closestEl(e.target, "[data-att-view]");
   if(!btn) return;
 
   const id = btn.getAttribute("data-att-view");
@@ -2638,7 +2643,7 @@ if (window.__pendingBossLoad) {
           `;
 
           card.addEventListener("click", (e) => {
-            const btn = e.target.closest("[data-action]");
+            const btn = closestEl(e.target, "[data-action]");
             if(!btn) return;
 
             const action = btn.dataset.action;
@@ -2813,7 +2818,7 @@ const manualSetNext = (id2) => {
           `;
 
           card.addEventListener("click", (e) => {
-            const btn = e.target.closest("[data-action]");
+            const btn = closestEl(e.target, "[data-action]");
             if(!btn) return;
 
             const action = btn.dataset.action;
