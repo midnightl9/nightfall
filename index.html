@@ -2265,8 +2265,15 @@ document.addEventListener("click", (e) => {
 
 // ✅ Interpret user input as PH time no matter what device timezone is
 function dateFromPHInput(dateVal, timeVal){
-  // PH is UTC+08:00 (no DST) → safe to hardcode offset
-  return new Date(`${dateVal}T${timeVal}:00+08:00`);
+  // Accept "HH:MM" or "HH:MM:SS" and force PH (+08:00)
+  if(!dateVal || !timeVal) return new Date(NaN);
+
+  const parts = String(timeVal).trim().split(":");
+  const hh = parts[0]?.padStart(2,"0");
+  const mm = parts[1]?.padStart(2,"0");
+  if(hh == null || mm == null) return new Date(NaN);
+
+  return new Date(`${dateVal}T${hh}:${mm}:00+08:00`);
 }
 
       const LS_KEY = "bossTimers_v1";
@@ -2425,10 +2432,16 @@ if (!localStorage.getItem(LS_KEY)) {
       const findScheduledIndexById = (id) => btState.scheduled.findIndex(b => b.id === id);
 
       function getManualNextTime(b){
-        if(!b?.lastKill) return null;
-        const kill = new Date(b.lastKill);
-        return new Date(kill.getTime() + (b.hours * 3600 * 1000));
-      }
+  if(!b?.lastKill) return null;
+
+  const hours = Number(b.hours);
+  if(!Number.isFinite(hours) || hours <= 0) return null;
+
+  const kill = new Date(b.lastKill);
+  if(Number.isNaN(kill.getTime())) return null;
+
+  return new Date(kill.getTime() + (hours * 3600 * 1000));
+}
 
       function getManualDiffMs(b, now){
         const next = getManualNextTime(b);
@@ -2632,61 +2645,95 @@ if (window.__pendingBossLoad) {
             const bossId = btn.dataset.id;
 
             const manualKilledNow = (id2) => {
-              const idx = findManualIndexById(id2);
-              if(idx < 0) return;
-              const now2 = new Date();
-              btState.manual[idx].lastKill = now2.toISOString();
-              btState.manual[idx].lastRestart = now2.toISOString();
-              saveState();
-              btRenderAll();
-            };
-
-            const manualSetKill = (id2) => {
   const idx = findManualIndexById(id2);
-  if (idx < 0) return;
+  if(idx < 0) return;
+
+  // Force numeric hours (fix "does not reset hours" problem)
+  const h = Number(btState.manual[idx].hours);
+  btState.manual[idx].hours = (Number.isFinite(h) && h > 0) ? h : 24;
+
+  const now2 = new Date();
+  btState.manual[idx].lastKill = now2.toISOString();
+  btState.manual[idx].lastRestart = now2.toISOString();
+
+  // clear pending autoreset if any (prevents weird bounce)
+  const t = pendingAutoResets.get(id2);
+  if(t){ clearTimeout(t); pendingAutoResets.delete(id2); }
+
+  saveState();
+  btRenderAll();
+};
+
+const manualSetKill = (id2) => {
+  const idx = findManualIndexById(id2);
+  if(idx < 0) return;
 
   const dateEl = document.getElementById(`bt_mk_date_${id2}`);
   const timeEl = document.getElementById(`bt_mk_time_${id2}`);
   const dateVal = dateEl?.value;
   const timeVal = timeEl?.value;
-  if (!dateVal || !timeVal) return;
+  if(!dateVal || !timeVal){
+    window.toast?.("Pick a kill date + time first.");
+    return;
+  }
+
+  // Force numeric hours
+  const h = Number(btState.manual[idx].hours);
+  btState.manual[idx].hours = (Number.isFinite(h) && h > 0) ? h : 24;
 
   const dt = dateFromPHInput(dateVal, timeVal);
-  if (Number.isNaN(dt.getTime())) {
+  if(Number.isNaN(dt.getTime())){
     window.toast?.("Invalid kill date/time.");
     return;
   }
 
   btState.manual[idx].lastKill = dt.toISOString();
   btState.manual[idx].lastRestart = new Date().toISOString();
+
+  const t = pendingAutoResets.get(id2);
+  if(t){ clearTimeout(t); pendingAutoResets.delete(id2); }
+
   saveState();
   btRenderAll();
 };
 
 const manualSetNext = (id2) => {
   const idx = findManualIndexById(id2);
-  if (idx < 0) return;
+  if(idx < 0) return;
 
   const dateEl = document.getElementById(`bt_mn_date_${id2}`);
   const timeEl = document.getElementById(`bt_mn_time_${id2}`);
   const dateVal = dateEl?.value;
   const timeVal = timeEl?.value;
-  if (!dateVal || !timeVal) return;
+  if(!dateVal || !timeVal){
+    window.toast?.("Pick a next date + time first.");
+    return;
+  }
+
+  // Force numeric hours
+  const hours = Number(btState.manual[idx].hours);
+  btState.manual[idx].hours = (Number.isFinite(hours) && hours > 0) ? hours : 24;
 
   const next2 = dateFromPHInput(dateVal, timeVal);
-  if (Number.isNaN(next2.getTime())) {
+  if(Number.isNaN(next2.getTime())){
     window.toast?.("Invalid next date/time.");
     return;
   }
 
-  // Convert "next spawn time" back into a kill time:
-  // kill = next - (hours * 3600 * 1000)
-  const hours = Number(btState.manual[idx].hours || 0);
-  const killMs = next2.getTime() - (hours * 3600 * 1000);
+  // kill = next - hours
+  const killMs = next2.getTime() - (btState.manual[idx].hours * 3600 * 1000);
   const killDt = new Date(killMs);
+  if(Number.isNaN(killDt.getTime())){
+    window.toast?.("Could not compute kill time from next time.");
+    return;
+  }
 
   btState.manual[idx].lastKill = killDt.toISOString();
   btState.manual[idx].lastRestart = new Date().toISOString();
+
+  const t = pendingAutoResets.get(id2);
+  if(t){ clearTimeout(t); pendingAutoResets.delete(id2); }
+
   saveState();
   btRenderAll();
 };
