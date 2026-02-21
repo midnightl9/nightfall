@@ -521,16 +521,19 @@
    Attendance UI (NEW) — scoped
    Only affects #view-attendance
 =========================== */
-#view-attendance .att-wrap{
-  display:flex;
-  flex-direction:column;
-  gap:14px;
+/* Center BOTH label + value inside attendance cards */
+#view-attendance .att-card{
+  text-align: center;
 }
 
-#view-attendance .att-cards{
-  display:grid;
-  grid-template-columns: repeat(4, minmax(0,1fr));
-  gap:14px;
+#view-attendance .att-kicker{
+  text-align: center;
+  width: 100%;
+}
+
+#view-attendance .att-value{
+  text-align: center;
+  width: 100%;
 }
 
 /* Attendance +/- controls */
@@ -1019,14 +1022,13 @@
   </div>
 
   <!-- Summary cards + search -->
-  <div class="att-cards">
+<div class="att-card">
+  <div class="att-kicker">TOTAL FUND</div>
+  <div class="att-value mono" id="attTotalFund">$0</div>
+</div>
+  
   <div class="att-card">
-    <div class="att-kicker">TOTAL GUILD FUND</div>
-    <div class="att-value mono" id="attTotalFund">$0</div>
-  </div>
-
-  <div class="att-card">
-    <div class="att-kicker">ATTENDANCE SHARE (<span id="attAttendPctLabel">80</span>%)</div>
+    <div class="att-kicker">ATTENDANCE SHARE (<span id="attAttendPctLabel">90</span>%)</div>
     <div class="att-value mono" id="attAttendanceShare">$0</div>
   </div>
 
@@ -1034,12 +1036,6 @@
     <div class="att-kicker">MANAGEMENT SHARE (<span id="attMgmtPctLabel">10</span>%)</div>
     <div class="att-value mono" id="attManagementShare">$0</div>
   </div>
-
-  <div class="att-card">
-    <div class="att-kicker">RETENTION FUND (<span id="attRetentionPctLabel">10</span>%)</div>
-    <div class="att-value mono" id="attRetentionFund">$0</div>
-  </div>
-</div>
 
     <div class="att-tools">
       <div class="att-search">
@@ -1516,116 +1512,99 @@ const members = [...state.members].sort((a,b) => {
   return "$" + x.toFixed(2).replace(/\.00$/, "");
 }
 
-function renderAttendanceLeaderboard(filter=""){
-  const q = (filter || "").trim().toLowerCase();
+function renderAttendanceLeaderboard(filter = "") {
+  const q = String(filter || "").trim().toLowerCase();
 
   const totalFund = Number(state.fundTotal || 0);
 
-// Management % stays editable (default 10)
-const mgmtPct = clamp(Number(state.mgmtPct ?? 10), 0, 100);
+  // Management % stays editable (default 10)
+  const mgmtPct = clamp(Number(state.mgmtPct ?? 10), 0, 100);
 
-// Retention Fund is fixed 10% (per your request)
-const retentionPct = 10;
+  // Attendance share is remainder
+  const attendPct = clamp(100 - mgmtPct, 0, 100);
 
-// Attendance share becomes 80% (when mgmt is 10 and retention is 10)
-const attendPct = clamp(100 - mgmtPct - retentionPct, 0, 100);
+  // Header labels + values
+  const totalFundEl = document.getElementById("attTotalFund"); // (optional element)
+  const attShareEl  = document.getElementById("attAttendanceShare");
+  const mgmtShareEl = document.getElementById("attManagementShare");
+  const attendPctLabel = document.getElementById("attAttendPctLabel");
+  const mgmtPctLabel = document.getElementById("attMgmtPctLabel");
 
-// Header cards
-const totalFundEl = document.getElementById("attTotalFund");
-const attShareEl  = document.getElementById("attAttendanceShare");
-const mgmtShareEl = document.getElementById("attManagementShare");
-const retShareEl  = document.getElementById("attRetentionFund");
+  if (attendPctLabel) attendPctLabel.textContent = String(attendPct);
+  if (mgmtPctLabel) mgmtPctLabel.textContent = String(mgmtPct);
 
-const attendPctLabel = document.getElementById("attAttendPctLabel");
-const mgmtPctLabel = document.getElementById("attMgmtPctLabel");
-const retPctLabel = document.getElementById("attRetentionPctLabel");
+  const mgmtPool = totalFund * (mgmtPct / 100);
+  const attendancePool = Math.max(0, totalFund - mgmtPool);
 
-if(attendPctLabel) attendPctLabel.textContent = String(attendPct);
-if(mgmtPctLabel) mgmtPctLabel.textContent = String(mgmtPct);
-if(retPctLabel) retPctLabel.textContent = String(retentionPct);
+  if (totalFundEl) totalFundEl.textContent = money(totalFund); // only updates if element exists
+  if (attShareEl)  attShareEl.textContent  = money(attendancePool);
+  if (mgmtShareEl) mgmtShareEl.textContent = money(mgmtPool);
 
-// ✅ New computation
-// 1) total * 10% = management fee
-const mgmtPool = totalFund * (mgmtPct / 100);
+  // Build rows from members + saved points (attPoints)
+  const rows = (state.members || []).map(m => {
+    const pts = (state.attPoints && state.attPoints[m.id]) ? state.attPoints[m.id] : {};
+    const kransia   = Math.max(0, Number(pts.kransia || 0));
+    const fieldBoss = Math.max(0, Number(pts.fieldBoss || 0));
+    const guildBoss = Math.max(0, Number(pts.guildBoss || 0));
+    const gvg       = Math.max(0, Number(pts.gvg || 0));
 
-// 2) after management fee is deducted
-const remainingAfterMgmt = Math.max(0, totalFund - mgmtPool);
+    const total = kransia + fieldBoss + guildBoss + gvg;
 
-// 3) retention fund is 10% (of total to keep 80/10/10 = 100%)
-const retentionPool = remainingAfterMgmt * (retentionPct / 100);
-
-// 4) attendance pool is the rest (80% when mgmt=10, retention=10)
-const attendancePool = Math.max(0, totalFund - mgmtPool - retentionPool);
-
-if(totalFundEl) totalFundEl.textContent = money(totalFund);
-if(attShareEl)  attShareEl.textContent  = money(attendancePool);
-if(mgmtShareEl) mgmtShareEl.textContent = money(mgmtPool);
-if(retShareEl)  retShareEl.textContent  = money(retentionPool);
-
-  // ✅ Build rows from members + state.attPoints (persistent)
-  const byId = new Map(state.members.map(m => {
-    const p = (state.attPoints && state.attPoints[m.id]) ? state.attPoints[m.id] : null;
-    const kr = Number(p?.kransia || 0);
-    const fb = Number(p?.fieldBoss || 0);
-    const gb = Number(p?.guildBoss || 0);
-    const gv = Number(p?.gvg || 0);
-    const total = kr + fb + gb + gv;
-
-    return [m.id, {
+    return {
       id: m.id,
-      name: m.name || "",
-      kransia: kr,
-      fieldBoss: fb,
-      guildBoss: gb,
-      gvg: gv,
+      name: m.name || "(No name)",
+      kransia,
+      fieldBoss,
+      guildBoss,
+      gvg,
       total
-    }];
-  }));
+    };
+  });
 
-  // Convert to array + apply search filter
-  let rows = Array.from(byId.values());
-  if(q){
-    rows = rows.filter(r => (r.name || "").toLowerCase().includes(q));
-  }
+  // Filter by name
+  let filtered = rows;
+  if (q) filtered = rows.filter(r => (r.name || "").toLowerCase().includes(q));
 
-  // Sort: highest total points first
-  rows.sort((a,b) => (b.total - a.total) || String(a.name).localeCompare(String(b.name)));
+  // Sort highest points first
+  filtered.sort((a, b) => (b.total - a.total) || String(a.name).localeCompare(String(b.name)));
 
-  // Sum total points for percentage + payout
-  const sumPoints = rows.reduce((acc,r) => acc + (r.total || 0), 0) || 0;
+  // Sum points
+  const sumPoints = filtered.reduce((acc, r) => acc + (r.total || 0), 0);
 
   const tbody = document.getElementById("attendanceLeaderboardBody");
-  if(!tbody) return;
+  if (!tbody) return;
 
   const admin = isAdmin();
 
   const cellWithAdjust = (memberId, key, value) => {
     const safeId = escapeHtml(memberId);
+    const safeVal = Number(value || 0);
+
     return admin
       ? `
         <div class="att-cell">
-          <span class="mono att-num">${value}</span>
+          <span class="mono att-num">${safeVal}</span>
           <span class="att-mini">
             <button class="att-miniBtn" data-att-adj="1" data-att-id="${safeId}" data-att-key="${key}" data-att-delta="-1" title="Minus">-</button>
             <button class="att-miniBtn" data-att-adj="1" data-att-id="${safeId}" data-att-key="${key}" data-att-delta="1" title="Plus">+</button>
           </span>
         </div>
       `
-      : `<span class="mono">${value}</span>`;
+      : `<span class="mono">${safeVal}</span>`;
   };
 
-  if(!rows.length){
+  if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan="9" class="muted" style="padding:14px 12px;">No members found.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = rows.map(r => {
-    const pct = sumPoints ? ((r.total / sumPoints) * 100) : 0;
+  tbody.innerHTML = filtered.map(r => {
+    const pct = sumPoints ? (r.total / sumPoints) * 100 : 0;
     const usdt = attendancePool * (pct / 100);
 
     return `
       <tr>
-        <td class="att-name">${escapeHtml(r.name || "(No name)")}</td>
+        <td class="att-name">${escapeHtml(r.name)}</td>
 
         <td>${cellWithAdjust(r.id, "kransia", r.kransia)}</td>
         <td>${cellWithAdjust(r.id, "fieldBoss", r.fieldBoss)}</td>
