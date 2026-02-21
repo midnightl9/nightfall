@@ -1301,35 +1301,35 @@
 
   // LOAD + LIVE SYNC
   onSnapshot(docRef, (snap) => {
-    if (!snap.exists()) return;
+  if (!snap.exists()) return;
 
-    const data = snap.data();
+  const data = snap.data();
 
-    // Update the REAL app state
-    if (data.appState) {
-      window.state = {
-        ...(window.state || {}),
-        ...data.appState
-      };
+  if (data.appState) {
+    // ✅ overwrite state from cloud
+    window.state = { ...defaultState(), ...data.appState };
+    state = window.state; // ✅ IMPORTANT: keep local variable in sync
+
+    // ✅ optional: keep localStorage updated too
+    localStorage.setItem(KEY, JSON.stringify(window.state));
+  }
+
+  // Boss timers sync stays the same
+  if (data.bossState) {
+    const ok =
+      data.bossState &&
+      Array.isArray(data.bossState.manual) &&
+      Array.isArray(data.bossState.scheduled);
+
+    if (ok) {
+      localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
+      if (window.btLoadFromStorage) window.btLoadFromStorage();
+      else window.__pendingBossLoad = true;
     }
+  }
 
-    // Boss timers (stored in localStorage)
-    if (data.bossState) {
-      const ok =
-        data.bossState &&
-        Array.isArray(data.bossState.manual) &&
-        Array.isArray(data.bossState.scheduled);
-
-      if (ok) {
-        localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
-        if (window.btLoadFromStorage) window.btLoadFromStorage();
-        else window.__pendingBossLoad = true;
-      }
-    }
-
-    // Re-render UI
-    window.renderAll?.(document.getElementById("globalSearch")?.value || "");
-  });
+  window.renderAll?.(document.getElementById("globalSearch")?.value || "");
+});
 
   // ✅ Expose sync function globally
   window.syncToCloud = async function () {
