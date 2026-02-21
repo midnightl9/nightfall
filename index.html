@@ -1318,48 +1318,63 @@ onAuthStateChanged(auth, (user) => {
   const docRef = doc(db, "guild", "main");
 
   // LOAD + LIVE SYNC
-  onSnapshot(docRef, (snap) => {
+  // ✅ Use literal keys here because KEY/defaultState are defined later in non-module script
+const APP_KEY = "nightfall_guild_state_v1";
+const baseState = () => ({
+  members: [],
+  attendance: [],
+  events: [],
+  notes: "",
+  bosses: [],
+  fundTotal: 0,
+  mgmtPct: 10,
+  attPoints: {},
+});
+
+onSnapshot(docRef, (snap) => {
   if (!snap.exists()) return;
 
   const data = snap.data();
 
-  // ✅ App state from cloud
-  if (data.appState) {
-    window.state = { ...defaultState(), ...data.appState };
-    state = window.state; // ✅ THIS is what makes other computers update correctly
+  // ✅ App state from cloud (safe even if non-module script hasn't loaded yet)
+  if (data.appState && typeof data.appState === "object") {
+    const merged = { ...baseState(), ...data.appState };
+    window.state = merged;
 
-    // optional but recommended: keep local storage synced
-    localStorage.setItem(KEY, JSON.stringify(window.state));
+    // ✅ Don't touch `state` variable here (it might not exist yet)
+    localStorage.setItem(APP_KEY, JSON.stringify(merged));
   }
 
-  // ✅ Boss timers from cloud (your existing logic)
+  // ✅ Boss timers from cloud
   if (data.bossState) {
-  const ok =
-    data.bossState &&
-    Array.isArray(data.bossState.manual) &&
-    Array.isArray(data.bossState.scheduled);
+    const ok =
+      data.bossState &&
+      Array.isArray(data.bossState.manual) &&
+      Array.isArray(data.bossState.scheduled);
 
-  if (ok) {
-    // ✅ Only overwrite local if cloud is newer
-    let localUpdatedAt = 0;
-    try {
-      const localRaw = localStorage.getItem("bossTimers_v1");
-      if (localRaw) localUpdatedAt = Number(JSON.parse(localRaw).updatedAt || 0);
-    } catch (_) {}
+    if (ok) {
+      let localUpdatedAt = 0;
+      try {
+        const localRaw = localStorage.getItem("bossTimers_v1");
+        if (localRaw) localUpdatedAt = Number(JSON.parse(localRaw).updatedAt || 0);
+      } catch (_) {}
 
-    const cloudUpdatedAt = Number(data.bossState.updatedAt || 0);
+      const cloudUpdatedAt = Number(data.bossState.updatedAt || 0);
 
-    if (cloudUpdatedAt >= localUpdatedAt) {
-      localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
-      if (window.btLoadFromStorage) window.btLoadFromStorage();
-      else window.__pendingBossLoad = true;
+      if (cloudUpdatedAt >= localUpdatedAt) {
+        localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
+
+        // ✅ If boss script loaded, reload it. If not, queue it.
+        if (window.btLoadFromStorage) window.btLoadFromStorage();
+        else window.__pendingBossLoad = true;
+      }
     }
-    // else: local is newer, ignore this snapshot to prevent "undo"
   }
-}
 
-  // ✅ Re-render
-  window.renderAll?.(document.getElementById("globalSearch")?.value || "");
+  // ✅ Re-render if your main script is ready
+  if (window.renderAll) {
+    window.renderAll(document.getElementById("globalSearch")?.value || "");
+  }
 });
 
   // ✅ Expose sync function globally
@@ -2437,22 +2452,43 @@ if (!localStorage.getItem(LS_KEY)) {
       }
 
       function nextOccurrenceFromRule(ruleStr, fromDate = new Date()){
-        const rules = parseScheduleRule(ruleStr);
-        if(rules.length === 0) return null;
-        const now = new Date(fromDate);
-        let best = null;
-        for(const r of rules){
-          const candidate = new Date(now);
-          candidate.setSeconds(0,0);
-          candidate.setHours(r.hour, r.min, 0, 0);
-          const curDow = now.getDay();
-          let addDays = (r.dow - curDow + 7) % 7;
-          if(addDays === 0 && candidate <= now) addDays = 7;
-          candidate.setDate(candidate.getDate() + addDays);
-          if(!best || candidate < best) best = candidate;
-        }
-        return best;
-      }
+  const rules = parseScheduleRule(ruleStr);
+  if(rules.length === 0) return null;
+
+  // ✅ Get PH time "now"
+  const nowPH = new Date(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Manila",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).format(fromDate).replace(",", "")
+  );
+
+  let best = null;
+
+  for(const r of rules){
+    const candidate = new Date(nowPH);
+
+    candidate.setSeconds(0,0);
+    candidate.setHours(r.hour, r.min, 0, 0);
+
+    const curDow = nowPH.getDay();
+    let addDays = (r.dow - curDow + 7) % 7;
+
+    if(addDays === 0 && candidate <= nowPH) addDays = 7;
+
+    candidate.setDate(candidate.getDate() + addDays);
+
+    if(!best || candidate < best) best = candidate;
+  }
+
+  return best;
+}
 
       // Manual logic
       const findManualIndexById = (id) => btState.manual.findIndex(b => b.id === id);
