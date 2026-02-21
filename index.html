@@ -1281,100 +1281,80 @@
   </div>
 
   <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCqClynjoUQspK89H3_-MQO7dpPMpdMuTY",
-  authDomain: "nightfall-guild.firebaseapp.com",
-  projectId: "nightfall-guild",
-  storageBucket: "nightfall-guild.firebasestorage.app",
-  messagingSenderId: "995559094027",
-  appId: "1:995559094027:web:8117131f924691d48b540e"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyCqClynjoUQspK89H3_-MQO7dpPMpdMuTY",
+    authDomain: "nightfall-guild.firebaseapp.com",
+    projectId: "nightfall-guild",
+    storageBucket: "nightfall-guild.firebasestorage.app",
+    messagingSenderId: "995559094027",
+    appId: "1:995559094027:web:8117131f924691d48b540e"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-// 🔥 GLOBAL SHARED DOC
-const docRef = doc(db, "guild", "main");
+  // 🔥 GLOBAL SHARED DOC
+  const docRef = doc(db, "guild", "main");
 
-// LOAD + LIVE SYNC
-onSnapshot(docRef, (snap) => {
-  if (!snap.exists()) return;
+  // LOAD + LIVE SYNC
+  onSnapshot(docRef, (snap) => {
+    if (!snap.exists()) return;
 
-  const data = snap.data();
+    const data = snap.data();
 
-  if (data.appState) {
     // Update the REAL app state
-    window.state = {
-      ...(window.state || {}),
-      ...data.appState
-    };
+    if (data.appState) {
+      window.state = {
+        ...(window.state || {}),
+        ...data.appState
+      };
+    }
 
-    // Persist locally so refresh matches cloud
-    localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
-window.btLoadFromStorage?.();
-  }
+    // Boss timers (stored in localStorage)
+    if (data.bossState) {
+      const ok =
+        data.bossState &&
+        Array.isArray(data.bossState.manual) &&
+        Array.isArray(data.bossState.scheduled);
 
-  if (data.bossState) {
-  localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
-
-  if (window.btLoadFromStorage) {
-    window.btLoadFromStorage();
-  } else {
-    window.__pendingBossLoad = true; // boss script not ready yet
-  }
-}
-
-  // Re-render UI
-  window.renderAll?.(document.getElementById("globalSearch")?.value || "");
-});
-
-window.syncToCloud = async function () {
-  try {
-    // Always send appState (fine)
-    const payload = { appState: window.state };
-
-    // Only send bossState if it actually looks valid
-    let bossRaw = localStorage.getItem("bossTimers_v1");
-    if (bossRaw) {
-      try {
-        const bossParsed = JSON.parse(bossRaw);
-
-        const hasManual = bossParsed && Array.isArray(bossParsed.manual);
-        const hasScheduled = bossParsed && Array.isArray(bossParsed.scheduled);
-
-        // ✅ Only include bossState if it has the right shape
-        if (hasManual || hasScheduled) {
-          payload.bossState = bossParsed;
-        }
-      } catch (e) {
-        // ignore invalid boss json
+      if (ok) {
+        localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
+        if (window.btLoadFromStorage) window.btLoadFromStorage();
+        else window.__pendingBossLoad = true;
       }
     }
 
-    await setDoc(docRef, payload, { merge: true });
-  } catch (err) {
-    console.error("Cloud sync failed:", err);
-  }
-};
+    // Re-render UI
+    window.renderAll?.(document.getElementById("globalSearch")?.value || "");
+  });
 
-// SAVE FUNCTION (GLOBAL)
-window.syncToCloud = async function () {
-  try {
-    await setDoc(
-      docRef,
-      {
-        appState: window.state,
-        bossState: JSON.parse(localStorage.getItem("bossTimers_v1") || "{}")
-      },
-      { merge: true } // ✅ THIS IS WHERE IT GOES
-    );
-  } catch (err) {
-    console.error("Cloud sync failed:", err);
-  }
-};
+  // ✅ Expose sync function globally
+  window.syncToCloud = async function () {
+    try {
+      const payload = { appState: window.state };
+
+      // Only send bossState if it has the right shape
+      const bossRaw = localStorage.getItem("bossTimers_v1");
+      if (bossRaw) {
+        try {
+          const bossParsed = JSON.parse(bossRaw);
+          const ok =
+            bossParsed &&
+            Array.isArray(bossParsed.manual) &&
+            Array.isArray(bossParsed.scheduled);
+
+          if (ok) payload.bossState = bossParsed;
+        } catch (_) {}
+      }
+
+      await setDoc(docRef, payload, { merge: true });
+    } catch (err) {
+      console.error("Cloud sync failed:", err);
+    }
+  };
 </script>
 
   <script>
@@ -2304,14 +2284,16 @@ document.addEventListener("click", (e) => {
         }
       }
       let btState = loadState();
-      // On first boot, ensure Firestore gets boss timers if none exist yet
-saveState();
-      const saveState = () => {
+
+const saveState = () => {
   localStorage.setItem(LS_KEY, JSON.stringify(btState));
-  // ✅ push to Firebase too
   if (window.syncToCloud) window.syncToCloud();
 };
 
+// Optional: write initial state once (only if nothing existed)
+if (!localStorage.getItem(LS_KEY)) {
+  saveState();
+}
       // Hard repair hours for defaults (keeps kill times)
       (function edgeRepairHours(){
         const defaultByName = new Map(DEFAULT_MANUAL.map(d => [d.name.toLowerCase(), d.hours]));
