@@ -1295,6 +1295,8 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+    
+    
 
     // 🔥 ADD THIS RIGHT HERE
 const auth = getAuth(app);
@@ -1316,6 +1318,21 @@ onAuthStateChanged(auth, (user) => {
 
   // 🔥 GLOBAL SHARED DOC
   const docRef = doc(db, "guild", "main");
+
+    window.pushBossState = async (bossState) => {
+  try {
+    const ok =
+      bossState &&
+      Array.isArray(bossState.manual) &&
+      Array.isArray(bossState.scheduled);
+
+    if (!ok) return;
+
+    await setDoc(docRef, { bossState }, { merge: true });
+  } catch (err) {
+    console.error("pushBossState failed:", err);
+  }
+};
 
   // LOAD + LIVE SYNC
   // ✅ Use literal keys here because KEY/defaultState are defined later in non-module script
@@ -2387,15 +2404,18 @@ function dateFromPHInput(dateVal, timeVal){
       let btState = loadState();
 
 const saveState = () => {
-  // ✅ attach a timestamp so we can resolve cloud/local conflicts
+  // ✅ attach timestamp so cloud wins deterministically
   btState.updatedAt = Date.now();
 
+  // local cache
   localStorage.setItem(LS_KEY, JSON.stringify(btState));
 
-  // sync to Firebase
+  // ✅ instant boss sync to everyone
+  if (window.pushBossState) window.pushBossState(btState);
+
+  // optional: keep the rest of your appState syncing too
   if (window.syncToCloud) window.syncToCloud();
 };
-
 // Optional: write initial state once (only if nothing existed)
 if (!localStorage.getItem(LS_KEY)) {
   saveState();
@@ -2929,7 +2949,7 @@ const manualSetNext = (id2) => {
           const next = getManualNextTime(b);
 
           if(!next){
-            el.textContent = "00:00:00";
+            el.textContent = "--:--:--";
             setTimerColor(el, -1);
             return;
           }
