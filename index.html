@@ -1282,6 +1282,54 @@
     </div>
   </div>
 
+  <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "PASTE_HERE",
+  authDomain: "PASTE_HERE",
+  projectId: "PASTE_HERE",
+  storageBucket: "PASTE_HERE",
+  messagingSenderId: "PASTE_HERE",
+  appId: "PASTE_HERE"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// 🔥 GLOBAL SHARED DOC
+const docRef = doc(db, "guild", "main");
+
+// LOAD + LIVE SYNC
+onSnapshot(docRef, (snap) => {
+  if (snap.exists()) {
+    const data = snap.data();
+
+    // Merge into your app state
+    state = {
+      ...state,
+      ...data.appState
+    };
+
+    // Boss timers
+    if (data.bossState) {
+      localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
+    }
+
+    renderAll("");
+  }
+});
+
+// SAVE FUNCTION (GLOBAL)
+window.syncToCloud = async function () {
+  await setDoc(docRef, {
+    appState: state,
+    bossState: JSON.parse(localStorage.getItem("bossTimers_v1") || "{}")
+  });
+};
+</script>
+
   <script>
     // ---------------- Admin Auth (STATIC FRONTEND GATE) ----------------
     const ADMIN_USER = "nightfall";
@@ -1323,8 +1371,13 @@
         };
       }catch(e){ return defaultState(); }
     };
-    const save = () => localStorage.setItem(KEY, JSON.stringify(state));
-    let state = load();
+    const save = () => {
+  localStorage.setItem(KEY, JSON.stringify(state));
+
+  if (window.syncToCloud) {
+    window.syncToCloud();
+  }
+};
 
     // ---------- Helpers ----------
     const $ = (sel) => document.querySelector(sel);
