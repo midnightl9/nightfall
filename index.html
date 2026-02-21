@@ -776,7 +776,7 @@
         <div>
           <div style="font-weight:700;letter-spacing:.2px;">Viewer mode</div>
           <div class="muted" style="font-size:13px;margin-top:4px;">
-            You can view roster, attendance, events, and boss timers. Admin actions are locked.
+           
           </div>
         </div>
         <button class="btn primary small" id="btnAdminLogin2">Login as Admin</button>
@@ -899,17 +899,12 @@
               <div class="bt-sectionTitle">
                 <h2>Manual Boss Timers</h2>
 
-                <div class="bt-toolbar">
+                <div class="bt-toolbar" data-admin-only="1">
                   <input class="bt-input" id="btManualName" placeholder="Boss Name" />
                   <input class="bt-input" id="btManualHours" placeholder="Hours" type="number" step="0.01" min="0" />
                   <button class="bt-btn bt-primary" id="btAddManual">Add Manual Timer</button>
-                  <button class="bt-btn" id="btResetAll">Reset All (For Maintenance Only)</button>
+                  <button class="bt-btn" id="btResetAll" data-admin-only="1">Reset All (For Maintenance Only)</button>
                 </div>
-
-                <div class="bt-hint">
-                  Manual bosses: set a respawn in hours. Use <span class="bt-muted">Killed Now</span> to start the countdown.
-                </div>
-              </div>
 
               <div class="bt-grid" id="btManualGrid"></div>
             </div>
@@ -918,16 +913,11 @@
               <div class="bt-sectionTitle">
                 <h2>Scheduled Bosses</h2>
 
-                <div class="bt-toolbar">
+                <div class="bt-toolbar" data-admin-only="1">
                   <input class="bt-input" id="btSchedName" placeholder="Boss Name" />
                   <input class="bt-input" id="btSchedRule" placeholder="Schedule e.g. mon 12:30, tue 19:00" />
                   <button class="bt-btn bt-primary" id="btAddScheduled">Add Scheduled Boss</button>
                 </div>
-
-                <div class="bt-hint">
-                  Scheduled bosses: write times like <span class="bt-muted">mon 19:00, wed 11:30, thu 11:30</span>. 24-hour time recommended.
-                </div>
-              </div>
 
               <div class="bt-grid" id="btScheduledGrid"></div>
             </div>
@@ -1541,8 +1531,6 @@ let state = window.state; // optional, but keep if your code expects `state`
       : `<span class="dot warn"></span> Viewer`;
   }
 
-      window.applyAdminUI = applyAdminUI;
-
   const notes = $("#notes");
   if (notes){
     notes.readOnly = !admin;
@@ -1550,6 +1538,7 @@ let state = window.state; // optional, but keep if your code expects `state`
       ? "Example:\n• Raid time: 9:00 PM\n• Bring resistance pots\n• New recruits interview on Friday"
       : "Locked (admin only).";
   }
+      
 
   const notesHint = $("#notesHint");
   if (notesHint) notesHint.textContent = admin ? "Autosaves" : "Locked (admin only)";
@@ -1565,6 +1554,7 @@ let state = window.state; // optional, but keep if your code expects `state`
   const r = (location.hash || "#dashboard").replace("#","");
   if(!admin && r === "settings") location.hash = "#dashboard";
 }
+    window.applyAdminUI = applyAdminUI;
 
     // ---------- Routing ----------
     const routes = ["dashboard","boss","members","attendance","events","settings"];
@@ -2684,41 +2674,43 @@ if (window.__pendingBossLoad) {
           card.className = "bt-card bt-manual";
 
           card.innerHTML = `
-            <div class="bt-topRow">
-              <div class="bt-bossName">${escapeHtml2(b.name)}</div>
-              <div class="bt-pill">${escapeHtml2(String(b.hours))}h</div>
-            </div>
+  <div class="bt-topRow">
+    <div class="bt-bossName">${escapeHtml2(b.name)}</div>
+    <div class="bt-pill" data-admin-only="1">${escapeHtml2(String(b.hours))}h</div>
+  </div>
 
-            <div class="bt-timer bt-red" data-bt-manual-timer="${escapeAttr2(id)}">00:00:00</div>
-            <div class="bt-nextLine">NEXT: <span data-bt-manual-next="${escapeAttr2(id)}">${escapeHtml2(nextTxt)}</span></div>
+  <div class="bt-timer bt-red" data-bt-manual-timer="${escapeAttr2(id)}">00:00:00</div>
+  <div class="bt-nextLine">NEXT: <span data-bt-manual-next="${escapeAttr2(id)}">${escapeHtml2(nextTxt)}</span></div>
 
-            <div class="bt-controls">
-              <div class="bt-dateRow">
-                <input class="bt-input" id="bt_mk_date_${escapeAttr2(id)}" type="date" />
-                <input class="bt-input" id="bt_mk_time_${escapeAttr2(id)}" type="time" />
-              </div>
-              <button class="bt-miniBtn" data-action="fillKill" data-id="${escapeAttr2(id)}" title="Fill with now">🕒</button>
-            </div>
+  <div data-admin-only="1">
+    <div class="bt-controls">
+      <div class="bt-dateRow">
+        <input class="bt-input" id="bt_mk_date_${escapeAttr2(id)}" type="date" />
+        <input class="bt-input" id="bt_mk_time_${escapeAttr2(id)}" type="time" />
+      </div>
+      <button class="bt-miniBtn" data-action="fillKill" data-id="${escapeAttr2(id)}" title="Fill with now">🕒</button>
+    </div>
 
-            <div class="bt-controls">
-              <div class="bt-dateRow">
-                <input class="bt-input" id="bt_mn_date_${escapeAttr2(id)}" type="date" />
-                <input class="bt-input" id="bt_mn_time_${escapeAttr2(id)}" type="time" />
-              </div>
-              <button class="bt-miniBtn" data-action="fillNext" data-id="${escapeAttr2(id)}" title="Fill with next">⏱</button>
-            </div>
+    <div class="bt-controls">
+      <div class="bt-dateRow">
+        <input class="bt-input" id="bt_mn_date_${escapeAttr2(id)}" type="date" />
+        <input class="bt-input" id="bt_mn_time_${escapeAttr2(id)}" type="time" />
+      </div>
+      <button class="bt-miniBtn" data-action="fillNext" data-id="${escapeAttr2(id)}" title="Fill with next">⏱</button>
+    </div>
 
-            <div class="bt-btnStack">
-  <button type="button" class="bt-stackBtn" data-action="killedNow" data-id="${escapeAttr2(id)}">Killed Now</button>
-  <button type="button" class="bt-stackBtn" data-action="setKill" data-id="${escapeAttr2(id)}">Set Kill</button>
-  <button type="button" class="bt-stackBtn" data-action="setNext" data-id="${escapeAttr2(id)}">Set Next</button>
-</div>
+    <div class="bt-btnStack">
+      <button type="button" class="bt-stackBtn" data-action="killedNow" data-id="${escapeAttr2(id)}">Killed Now</button>
+      <button type="button" class="bt-stackBtn" data-action="setKill" data-id="${escapeAttr2(id)}">Set Kill</button>
+      <button type="button" class="bt-stackBtn" data-action="setNext" data-id="${escapeAttr2(id)}">Set Next</button>
+    </div>
 
-            <div class="bt-footer">
-              <div>Last restart: ${b.lastRestart ? escapeHtml2(formatShortPH(new Date(b.lastRestart))) : "--"}</div>
-              <div class="bt-muted">${b.lastKill ? "Kill set" : "No kill yet"}</div>
-            </div>
-          `;
+    <div class="bt-footer">
+      <div>Last restart: ${b.lastRestart ? escapeHtml2(formatShortPH(new Date(b.lastRestart))) : "--"}</div>
+      <div class="bt-muted">${b.lastKill ? "Kill set" : "No kill yet"}</div>
+    </div>
+  </div>
+`;
 
           card.addEventListener("click", (e) => {
             const btn = closestEl(e.target, "[data-action]");
@@ -2872,28 +2864,30 @@ const manualSetNext = (id2) => {
           card.className = "bt-card bt-scheduled";
 
           card.innerHTML = `
-            <div class="bt-topRow">
-              <div class="bt-bossName">${escapeHtml2(b.name)}</div>
-              <div class="bt-pill">Scheduled</div>
-            </div>
+  <div class="bt-topRow">
+    <div class="bt-bossName">${escapeHtml2(b.name)}</div>
+    <div class="bt-pill" data-admin-only="1">Scheduled</div>
+  </div>
 
-            <div class="bt-timer bt-red" data-bt-sched-timer="${escapeAttr2(id)}">00:00:00</div>
-            <div class="bt-nextLine">NEXT: <span data-bt-sched-next="${escapeAttr2(id)}">${escapeHtml2(nextTxt)}</span></div>
+  <div class="bt-timer bt-red" data-bt-sched-timer="${escapeAttr2(id)}">00:00:00</div>
+  <div class="bt-nextLine">NEXT: <span data-bt-sched-next="${escapeAttr2(id)}">${escapeHtml2(nextTxt)}</span></div>
 
-            <div class="bt-controls">
-              <input class="bt-input" id="bt_sr_${escapeAttr2(id)}" value="${escapeAttr2(b.rule)}" />
-              <button class="bt-miniBtn" data-action="saveRule" data-id="${escapeAttr2(id)}">Save</button>
-            </div>
+  <div data-admin-only="1">
+    <div class="bt-controls">
+      <input class="bt-input" id="bt_sr_${escapeAttr2(id)}" value="${escapeAttr2(b.rule)}" />
+      <button class="bt-miniBtn" data-action="saveRule" data-id="${escapeAttr2(id)}">Save</button>
+    </div>
 
-            <div class="bt-btnStack">
-              <button class="bt-stackBtn" data-action="setNextNow" data-id="${escapeAttr2(id)}">Set Next</button>
-            </div>
+    <div class="bt-btnStack">
+      <button class="bt-stackBtn" data-action="setNextNow" data-id="${escapeAttr2(id)}">Set Next</button>
+    </div>
 
-            <div class="bt-footer">
-              <div>Schedule: ${escapeHtml2(b.rule)}</div>
-              <div class="bt-muted">PH time</div>
-            </div>
-          `;
+    <div class="bt-footer">
+      <div>Schedule: ${escapeHtml2(b.rule)}</div>
+      <div class="bt-muted">PH time</div>
+    </div>
+  </div>
+`;
 
           card.addEventListener("click", (e) => {
             const btn = closestEl(e.target, "[data-action]");
