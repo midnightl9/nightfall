@@ -878,52 +878,59 @@
       </section>
 
       <!-- BOSS TAB (REPLACED) -->
-      <section id="view-boss" class="hide">
-        <div class="bt">
-          <div id="btNextBossBanner" class="bt-nextBossBanner bt-hidden" aria-live="polite">
-            <div class="bt-nextBossCenter">
-              <div class="bt-nextBossTitle">Next Boss: <span id="btNbName">—</span></div>
-              <div class="bt-nextBossSub">
-                <div class="bt-nbPill" title="Next spawn time (PH time)">
-                  🕒 <strong id="btNbClock">--:-- --</strong>
-                </div>
-                <div class="bt-nbPill bt-nbCountdown" title="Time remaining">
-                  ⏳ <strong id="btNbCountdown">00:00:00</strong>
-                </div>
-              </div>
-            </div>
+<section id="view-boss" class="hide">
+  <div class="bt">
+    <div id="btNextBossBanner" class="bt-nextBossBanner bt-hidden" aria-live="polite">
+      <div class="bt-nextBossCenter">
+        <div class="bt-nextBossTitle">Next Boss: <span id="btNbName">—</span></div>
+        <div class="bt-nextBossSub">
+          <div class="bt-nbPill" title="Next spawn time (PH time)">
+            🕒 <strong id="btNbClock">--:-- --</strong>
           </div>
-
-          <div class="bt-wrap">
-            <div class="bt-section" id="btManualSection">
-              <div class="bt-sectionTitle">
-                <h2>Manual Boss Timers</h2>
-
-                <div class="bt-toolbar" data-admin-only="1">
-                  <input class="bt-input" id="btManualName" placeholder="Boss Name" />
-                  <input class="bt-input" id="btManualHours" placeholder="Hours" type="number" step="0.01" min="0" />
-                  <button class="bt-btn bt-primary" id="btAddManual">Add Manual Timer</button>
-                  <button class="bt-btn" id="btResetAll" data-admin-only="1">Reset All (For Maintenance Only)</button>
-                </div>
-
-              <div class="bt-grid" id="btManualGrid"></div>
-            </div>
-
-            <div class="bt-section" id="btScheduledSection">
-              <div class="bt-sectionTitle">
-                <h2>Scheduled Bosses</h2>
-
-                <div class="bt-toolbar" data-admin-only="1">
-                  <input class="bt-input" id="btSchedName" placeholder="Boss Name" />
-                  <input class="bt-input" id="btSchedRule" placeholder="Schedule e.g. mon 12:30, tue 19:00" />
-                  <button class="bt-btn bt-primary" id="btAddScheduled">Add Scheduled Boss</button>
-                </div>
-
-              <div class="bt-grid" id="btScheduledGrid"></div>
-            </div>
+          <div class="bt-nbPill bt-nbCountdown" title="Time remaining">
+            ⏳ <strong id="btNbCountdown">00:00:00</strong>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
+
+    <div class="bt-wrap">
+
+      <!-- ✅ Manual -->
+      <div class="bt-section" id="btManualSection">
+        <div class="bt-sectionTitle">
+          <h2>Manual Boss Timers</h2>
+
+          <div class="bt-toolbar" data-admin-only="1">
+            <input class="bt-input" id="btManualName" placeholder="Boss Name" />
+            <input class="bt-input" id="btManualHours" placeholder="Hours" type="number" step="0.01" min="0" />
+            <button class="bt-btn bt-primary" id="btAddManual">Add Manual Timer</button>
+            <button class="bt-btn" id="btResetAll" data-admin-only="1">Reset All (For Maintenance Only)</button>
+          </div>
+        </div>
+
+        <!-- ✅ SPACE BELOW TOOLBAR -->
+        <div class="bt-grid" id="btManualGrid"></div>
+      </div>
+
+      <!-- ✅ Scheduled -->
+      <div class="bt-section" id="btScheduledSection">
+        <div class="bt-sectionTitle">
+          <h2>Scheduled Bosses</h2>
+
+          <div class="bt-toolbar" data-admin-only="1">
+            <input class="bt-input" id="btSchedName" placeholder="Boss Name" />
+            <input class="bt-input" id="btSchedRule" placeholder="Schedule e.g. mon 12:30, tue 19:00" />
+            <button class="bt-btn bt-primary" id="btAddScheduled">Add Scheduled Boss</button>
+          </div>
+        </div>
+
+        <div class="bt-grid" id="btScheduledGrid"></div>
+      </div>
+
+    </div>
+  </div>
+</section>
 
       <!-- MEMBERS -->
       <section id="view-members" class="hide">
