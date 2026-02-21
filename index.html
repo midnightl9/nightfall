@@ -1317,8 +1317,11 @@ onSnapshot(docRef, (snap) => {
   }
 
   if (data.bossState) {
-    localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
-  }
+  localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
+
+  // 🔥 THIS IS THE KEY LINE
+  window.btLoadFromStorage?.();
+}
 
   // Re-render UI
   window.renderAll?.(document.getElementById("globalSearch")?.value || "");
@@ -2283,7 +2286,11 @@ document.addEventListener("click", (e) => {
         }
       }
       let btState = loadState();
-      const saveState = () => localStorage.setItem(LS_KEY, JSON.stringify(btState));
+      const saveState = () => {
+  localStorage.setItem(LS_KEY, JSON.stringify(btState));
+  // ✅ push to Firebase too
+  if (window.syncToCloud) window.syncToCloud();
+};
 
       // Hard repair hours for defaults (keeps kill times)
       (function edgeRepairHours(){
@@ -2487,6 +2494,11 @@ document.addEventListener("click", (e) => {
             : "Add bosses";
         }
       };
+
+      window.btLoadFromStorage = function(){
+  btState = loadState();
+  btRenderAll();
+};
 
       // Render
       function btRenderAll(){
