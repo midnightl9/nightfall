@@ -1283,6 +1283,7 @@
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCqClynjoUQspK89H3_-MQO7dpPMpdMuTY",
@@ -1296,6 +1297,24 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
+    // 🔥 ADD THIS RIGHT HERE
+const auth = getAuth(app);
+
+// Expose auth helpers globally so your non-module script can call them
+window.authLogin = async (email, pass) => {
+  await signInWithEmailAndPassword(auth, email, pass);
+};
+
+window.authLogout = async () => {
+  await signOut(auth);
+};
+
+// Keep your UI gate in sync with Firebase login state
+onAuthStateChanged(auth, (user) => {
+  sessionStorage.setItem("l9_admin_authed_v3", user ? "1" : "0");
+  window.applyAdminUI?.();
+});
+
   // 🔥 GLOBAL SHARED DOC
   const docRef = doc(db, "guild", "main");
 
@@ -1305,16 +1324,16 @@
 
   const data = snap.data();
 
+  // ✅ App state from cloud
   if (data.appState) {
-    // ✅ overwrite state from cloud
     window.state = { ...defaultState(), ...data.appState };
-    state = window.state; // ✅ IMPORTANT: keep local variable in sync
+    state = window.state; // ✅ THIS is what makes other computers update correctly
 
-    // ✅ optional: keep localStorage updated too
+    // optional but recommended: keep local storage synced
     localStorage.setItem(KEY, JSON.stringify(window.state));
   }
 
-  // Boss timers sync stays the same
+  // ✅ Boss timers from cloud (your existing logic)
   if (data.bossState) {
     const ok =
       data.bossState &&
@@ -1328,6 +1347,7 @@
     }
   }
 
+  // ✅ Re-render
   window.renderAll?.(document.getElementById("globalSearch")?.value || "");
 });
 
@@ -1472,6 +1492,8 @@ let state = window.state; // optional, but keep if your code expects `state`
       ? `<span class="dot good"></span> Admin`
       : `<span class="dot warn"></span> Viewer`;
   }
+
+      window.applyAdminUI = applyAdminUI;
 
   const notes = $("#notes");
   if (notes){
@@ -1775,45 +1797,57 @@ function renderAttendanceLeaderboard(filter = "") {
     $("#globalSearch").addEventListener("input", () => renderAll($("#globalSearch").value || ""));
 
     // ---------- Admin Login ----------
-    const loginWrap = $("#loginWrap");
-    const openLogin = () => {
-      $("#loginError").classList.add("hide");
-      loginWrap.style.display = "flex";
-      loginWrap.setAttribute("aria-hidden","false");
-      $("#loginUser").value = "";
-      $("#loginPass").value = "";
-      $("#loginUser").focus();
-    };
-    const closeLogin = () => {
-      loginWrap.style.display = "none";
-      loginWrap.setAttribute("aria-hidden","true");
-    };
-    $("#btnAdminLogin").addEventListener("click", openLogin);
-    $("#btnAdminLogin2").addEventListener("click", openLogin);
-    $("#btnCloseLogin").addEventListener("click", closeLogin);
-    $("#btnLoginCancel").addEventListener("click", closeLogin);
-    loginWrap.addEventListener("click", (e)=>{ if(e.target===loginWrap) closeLogin(); });
+const loginWrap = $("#loginWrap");
 
-    $("#loginForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const u = $("#loginUser").value.trim();
-      const p = $("#loginPass").value;
-      if(u === ADMIN_USER && p === ADMIN_PASS){
-        setAdmin(true);
-        closeLogin();
-        toast("Admin unlocked.");
-        renderAll($("#globalSearch").value || "");
-      } else {
-        $("#loginError").classList.remove("hide");
-      }
-    });
+const openLogin = () => {
+  $("#loginError").classList.add("hide");
+  loginWrap.style.display = "flex";
+  loginWrap.setAttribute("aria-hidden","false");
+  $("#loginUser").value = "";
+  $("#loginPass").value = "";
+  $("#loginUser").focus();
+};
 
-    $("#btnAdminLogout").addEventListener("click", () => {
-      setAdmin(false);
-      toast("Logged out.");
-      if(location.hash === "#settings") location.hash = "#dashboard";
-      renderAll($("#globalSearch").value || "");
-    });
+const closeLogin = () => {
+  loginWrap.style.display = "none";
+  loginWrap.setAttribute("aria-hidden","true");
+};
+
+$("#btnAdminLogin").addEventListener("click", openLogin);
+$("#btnAdminLogin2").addEventListener("click", openLogin);
+$("#btnCloseLogin").addEventListener("click", closeLogin);
+$("#btnLoginCancel").addEventListener("click", closeLogin);
+loginWrap.addEventListener("click", (e)=>{ if(e.target===loginWrap) closeLogin(); });
+
+// ✅ ONE submit handler only (Firebase Auth)
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const email = $("#loginUser").value.trim();
+  const pass  = $("#loginPass").value;
+
+  try {
+    await window.authLogin(email, pass);
+    closeLogin();
+    toast("Admin unlocked.");
+    renderAll($("#globalSearch").value || "");
+  } catch (err) {
+    $("#loginError").classList.remove("hide");
+  }
+});
+
+// ✅ Logout must be async if you use await
+$("#btnAdminLogout").addEventListener("click", async () => {
+  try {
+    await window.authLogout();
+    toast("Logged out.");
+    if(location.hash === "#settings") location.hash = "#dashboard";
+    renderAll($("#globalSearch").value || "");
+  } catch (err) {
+    console.error(err);
+    toast("Logout failed.");
+  }
+});
 
     // ---------- Quick Add ----------
     const modalWrap = $("#modalWrap");
