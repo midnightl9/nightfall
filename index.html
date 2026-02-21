@@ -529,7 +529,7 @@
 
 #view-attendance .att-cards{
   display:grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
+  grid-template-columns: repeat(4, minmax(0,1fr));
   gap:14px;
 }
 
@@ -1019,23 +1019,27 @@
   </div>
 
   <!-- Summary cards + search -->
-  <div class="att-wrap">
-    <div class="att-cards">
-      <div class="att-card">
-        <div class="att-kicker">TOTAL GUILD FUND</div>
-        <div class="att-value mono" id="attTotalFund">$0</div>
-      </div>
+  <div class="att-cards">
+  <div class="att-card">
+    <div class="att-kicker">TOTAL GUILD FUND</div>
+    <div class="att-value mono" id="attTotalFund">$0</div>
+  </div>
 
-      <div class="att-card">
-        <div class="att-kicker">ATTENDANCE SHARE (<span id="attAttendPctLabel">90</span>%)</div>
-        <div class="att-value mono" id="attAttendanceShare">$0</div>
-      </div>
+  <div class="att-card">
+    <div class="att-kicker">ATTENDANCE SHARE (<span id="attAttendPctLabel">80</span>%)</div>
+    <div class="att-value mono" id="attAttendanceShare">$0</div>
+  </div>
 
-      <div class="att-card">
-        <div class="att-kicker">MANAGEMENT SHARE (<span id="attMgmtPctLabel">10</span>%)</div>
-        <div class="att-value mono" id="attManagementShare">$0</div>
-      </div>
-    </div>
+  <div class="att-card">
+    <div class="att-kicker">MANAGEMENT SHARE (<span id="attMgmtPctLabel">10</span>%)</div>
+    <div class="att-value mono" id="attManagementShare">$0</div>
+  </div>
+
+  <div class="att-card">
+    <div class="att-kicker">RETENTION FUND (<span id="attRetentionPctLabel">10</span>%)</div>
+    <div class="att-value mono" id="attRetentionFund">$0</div>
+  </div>
+</div>
 
     <div class="att-tools">
       <div class="att-search">
@@ -1516,25 +1520,47 @@ function renderAttendanceLeaderboard(filter=""){
   const q = (filter || "").trim().toLowerCase();
 
   const totalFund = Number(state.fundTotal || 0);
-  const mgmtPct = clamp(Number(state.mgmtPct ?? 10), 0, 100);
-  const attendPct = 100 - mgmtPct;
 
-  // Header cards
-  const totalFundEl = document.getElementById("attTotalFund");
-  const attShareEl  = document.getElementById("attAttendanceShare");
-  const mgmtShareEl = document.getElementById("attManagementShare");
-  const attendPctLabel = document.getElementById("attAttendPctLabel");
-  const mgmtPctLabel = document.getElementById("attMgmtPctLabel");
+// Management % stays editable (default 10)
+const mgmtPct = clamp(Number(state.mgmtPct ?? 10), 0, 100);
 
-  if(attendPctLabel) attendPctLabel.textContent = String(attendPct);
-  if(mgmtPctLabel) mgmtPctLabel.textContent = String(mgmtPct);
+// Retention Fund is fixed 10% (per your request)
+const retentionPct = 10;
 
-  const attendancePool = totalFund * (attendPct / 100);
-  const mgmtPool = totalFund * (mgmtPct / 100);
+// Attendance share becomes 80% (when mgmt is 10 and retention is 10)
+const attendPct = clamp(100 - mgmtPct - retentionPct, 0, 100);
 
-  if(totalFundEl) totalFundEl.textContent = money(totalFund);
-  if(attShareEl)  attShareEl.textContent  = money(attendancePool);
-  if(mgmtShareEl) mgmtShareEl.textContent = money(mgmtPool);
+// Header cards
+const totalFundEl = document.getElementById("attTotalFund");
+const attShareEl  = document.getElementById("attAttendanceShare");
+const mgmtShareEl = document.getElementById("attManagementShare");
+const retShareEl  = document.getElementById("attRetentionFund");
+
+const attendPctLabel = document.getElementById("attAttendPctLabel");
+const mgmtPctLabel = document.getElementById("attMgmtPctLabel");
+const retPctLabel = document.getElementById("attRetentionPctLabel");
+
+if(attendPctLabel) attendPctLabel.textContent = String(attendPct);
+if(mgmtPctLabel) mgmtPctLabel.textContent = String(mgmtPct);
+if(retPctLabel) retPctLabel.textContent = String(retentionPct);
+
+// ✅ New computation
+// 1) total * 10% = management fee
+const mgmtPool = totalFund * (mgmtPct / 100);
+
+// 2) after management fee is deducted
+const remainingAfterMgmt = Math.max(0, totalFund - mgmtPool);
+
+// 3) retention fund is 10% (of total to keep 80/10/10 = 100%)
+const retentionPool = remainingAfterMgmt * (retentionPct / 100);
+
+// 4) attendance pool is the rest (80% when mgmt=10, retention=10)
+const attendancePool = Math.max(0, totalFund - mgmtPool - retentionPool);
+
+if(totalFundEl) totalFundEl.textContent = money(totalFund);
+if(attShareEl)  attShareEl.textContent  = money(attendancePool);
+if(mgmtShareEl) mgmtShareEl.textContent = money(mgmtPool);
+if(retShareEl)  retShareEl.textContent  = money(retentionPool);
 
   // ✅ Build rows from members + state.attPoints (persistent)
   const byId = new Map(state.members.map(m => {
