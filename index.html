@@ -533,6 +533,39 @@
   gap:14px;
 }
 
+/* Attendance +/- controls */
+#view-attendance .att-cell{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+#view-attendance .att-cell .att-num{
+  min-width: 22px;
+  text-align:left;
+}
+#view-attendance .att-mini{
+  display:inline-flex;
+  gap:6px;
+}
+#view-attendance .att-miniBtn{
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+  line-height: 1;
+}
+#view-attendance .att-miniBtn:hover{
+  border-color: rgba(255,255,255,.22);
+  transform: translateY(-1px);
+}
+#view-attendance .att-miniBtn:active{
+  transform: translateY(0px);
+}
+
 #view-attendance .att-card{
   border-radius: var(--radius2);
   background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
@@ -1258,16 +1291,20 @@
     const setAdmin = (v) => sessionStorage.setItem(AUTH_KEY, v ? "1" : "0");
 
     // ---------- Storage ----------
-    const KEY = "l9_guild_management_v5";
+    const KEY = "nightfall_guild_state_v1";
     const defaultState = () => ({
-      members: [],
-      attendance: [],
-      events: [],
-      notes: "",
-      bosses: [],
-      fundTotal: 0,
-      mgmtPct: 10,
-    });
+  members: [],
+  attendance: [],
+  events: [],
+  notes: "",
+  bosses: [],
+  fundTotal: 0,
+  mgmtPct: 10,
+
+  // ✅ NEW: persistent attendance points by member id
+  // shape: { [memberId]: { kransia, fieldBoss, guildBoss, gvg } }
+  attPoints: {},
+});
 
     const load = () => {
       try{
@@ -1281,7 +1318,8 @@
           notes: typeof data.notes === "string" ? data.notes : "",
           bosses: Array.isArray(data.bosses) ? data.bosses : [],
           fundTotal: Number(data.fundTotal || 0),
-          mgmtPct: Number(data.mgmtPct ?? 10)
+          mgmtPct: Number(data.mgmtPct ?? 10),
+          attPoints: (data.attPoints && typeof data.attPoints === "object") ? data.attPoints : {},
         };
       }catch(e){ return defaultState(); }
     };
@@ -1467,40 +1505,6 @@ const members = [...state.members].sort((a,b) => {
       $("#trendMembers").textContent = state.members.length ? `${state.members.length} saved members` : "No data yet";
     }
 
-    function renderAttendanceMemberPicker(filter = ""){
-  const wrap = $("#aMembersWrap");
-  if(!wrap) return;
-
-  const q = (filter || "").trim().toLowerCase();
-
-  // only show Active/Trial (edit if you want)
-  const roster = [...state.members]
-    .filter(m => (m.name || "").trim().length > 0)
-    .filter(m => ["Active","Trial"].includes(m.status || "Active"));
-
-  const filtered = q
-    ? roster.filter(m =>
-        (m.name||"").toLowerCase().includes(q) ||
-        (m.role||"").toLowerCase().includes(q)
-      )
-    : roster;
-
-  if(!filtered.length){
-    wrap.innerHTML = `<div class="muted" style="font-size:12px;">No members to select.</div>`;
-    return;
-  }
-
-  wrap.innerHTML = filtered.map(m => `
-    <label style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;">
-      <input type="checkbox" name="aMembers" value="${escapeHtml(m.id)}" />
-      <span>
-        <strong>${escapeHtml(m.name)}</strong>
-        <span class="muted">(${escapeHtml(m.role)})</span>
-      </span>
-    </label>
-  `).join("");
-}
-
     // ---------- Attendance ----------
     function money(n){
   const x = Number(n);
@@ -1529,38 +1533,31 @@ function renderAttendanceLeaderboard(filter=""){
   const mgmtPool = totalFund * (mgmtPct / 100);
 
   if(totalFundEl) totalFundEl.textContent = money(totalFund);
-  if(attShareEl) attShareEl.textContent = money(attendancePool);
+  if(attShareEl)  attShareEl.textContent  = money(attendancePool);
   if(mgmtShareEl) mgmtShareEl.textContent = money(mgmtPool);
 
-  // Build a quick map: memberId => counts
-  const byId = new Map(state.members.map(m => [m.id, {
-    id: m.id,
-    name: m.name || "",
-    kransia: 0,
-    fieldBoss: 0,
-    guildBoss: 0,
-    gvg: 0,
-    total: 0
-  }]));
+  // ✅ Build rows from members + state.attPoints (persistent)
+  const byId = new Map(state.members.map(m => {
+    const p = (state.attPoints && state.attPoints[m.id]) ? state.attPoints[m.id] : null;
+    const kr = Number(p?.kransia || 0);
+    const fb = Number(p?.fieldBoss || 0);
+    const gb = Number(p?.guildBoss || 0);
+    const gv = Number(p?.gvg || 0);
+    const total = kr + fb + gb + gv;
 
-  // Your logs store selected member IDs in l.members[]
-  // We’ll count each appearance as 1 point (simple + matches screenshot style)
-  for(const log of state.attendance || []){
-    const ids = Array.isArray(log.members) ? log.members : [];
-    for(const id of ids){
-      const row = byId.get(id);
-      if(!row) continue;
-
-      // If you later add a "type" field, you can route points properly.
-      // For now: everything counts as Field Boss by default.
-      row.fieldBoss += 1;
-      row.total += 1;
-    }
-  }
+    return [m.id, {
+      id: m.id,
+      name: m.name || "",
+      kransia: kr,
+      fieldBoss: fb,
+      guildBoss: gb,
+      gvg: gv,
+      total
+    }];
+  }));
 
   // Convert to array + apply search filter
   let rows = Array.from(byId.values());
-
   if(q){
     rows = rows.filter(r => (r.name || "").toLowerCase().includes(q));
   }
@@ -1574,6 +1571,23 @@ function renderAttendanceLeaderboard(filter=""){
   const tbody = document.getElementById("attendanceLeaderboardBody");
   if(!tbody) return;
 
+  const admin = isAdmin();
+
+  const cellWithAdjust = (memberId, key, value) => {
+    const safeId = escapeHtml(memberId);
+    return admin
+      ? `
+        <div class="att-cell">
+          <span class="mono att-num">${value}</span>
+          <span class="att-mini">
+            <button class="att-miniBtn" data-att-adj="1" data-att-id="${safeId}" data-att-key="${key}" data-att-delta="-1" title="Minus">-</button>
+            <button class="att-miniBtn" data-att-adj="1" data-att-id="${safeId}" data-att-key="${key}" data-att-delta="1" title="Plus">+</button>
+          </span>
+        </div>
+      `
+      : `<span class="mono">${value}</span>`;
+  };
+
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="9" class="muted" style="padding:14px 12px;">No members found.</td></tr>`;
     return;
@@ -1586,10 +1600,12 @@ function renderAttendanceLeaderboard(filter=""){
     return `
       <tr>
         <td class="att-name">${escapeHtml(r.name || "(No name)")}</td>
-        <td class="mono">${r.kransia}</td>
-        <td class="mono">${r.fieldBoss}</td>
-        <td class="mono">${r.guildBoss}</td>
-        <td class="mono">${r.gvg}</td>
+
+        <td>${cellWithAdjust(r.id, "kransia", r.kransia)}</td>
+        <td>${cellWithAdjust(r.id, "fieldBoss", r.fieldBoss)}</td>
+        <td>${cellWithAdjust(r.id, "guildBoss", r.guildBoss)}</td>
+        <td>${cellWithAdjust(r.id, "gvg", r.gvg)}</td>
+
         <td class="mono">${r.total}</td>
         <td class="mono">${pct.toFixed(2)}%</td>
         <td class="mono">${money(usdt)}</td>
@@ -1647,8 +1663,6 @@ function renderAttendanceLeaderboard(filter=""){
   renderMembers(filter);
 
   // ✅ NEW: build the member checkbox list in Attendance tab
-  renderAttendanceMemberPicker(filter);
-
   renderAttendanceLeaderboard(document.getElementById("attendanceSearch")?.value || "");
   renderEvents();
   renderNotes();
@@ -1861,50 +1875,79 @@ function renderAttendanceLeaderboard(filter=""){
       save();
     });
 
-    // ---------- Table clicks ----------
-    document.addEventListener("click", (e) => {
-      const t = e.target;
+   // ---------- Table clicks (ONE global listener) ----------
+document.addEventListener("click", (e) => {
+  const t = e.target;
 
-      const editId = t?.dataset?.edit;
-      const delId = t?.dataset?.del;
-      const delAtt = t?.dataset?.delAtt;
-      const delEv = t?.dataset?.delEv;
+  // ✅ Attendance +/- controls
+  const adjBtn = e.target.closest("[data-att-adj='1']");
+  if (adjBtn) {
+    if (!isAdmin()) {
+      toast("Admin only.");
+      openLogin();
+      return;
+    }
 
-      if(editId){
-        if(!isAdmin()){ toast("Admin only."); openLogin(); return; }
-        const m = state.members.find(x => x.id === editId);
-        if(!m) return;
-        location.hash = "#members";
-        editingMemberId = m.id;
-        $("#mName").value = m.name || "";
-        $("#mRole").value = m.role || "Member";
-        $("#mPower").value = m.power || "";
-        $("#mStatus").value = m.status || "Active";
-        $("#mNotes").value = m.notes || "";
-        toast("Editing member…");
-      }
+    const id = adjBtn.getAttribute("data-att-id");
+    const key = adjBtn.getAttribute("data-att-key"); // kransia | fieldBoss | guildBoss | gvg
+    const delta = Number(adjBtn.getAttribute("data-att-delta") || 0);
 
-      if(delId){
-        if(!isAdmin()){ toast("Admin only."); return; }
-        state.members = state.members.filter(m => m.id !== delId);
-        save(); renderAll($("#globalSearch").value || "");
-        toast("Member deleted.");
-      }
+    if (!id || !key || !Number.isFinite(delta)) return;
 
-      if(delAtt){
-        if(!isAdmin()){ toast("Admin only."); return; }
-        state.attendance = state.attendance.filter(a => a.id !== delAtt);
-        save(); renderAll($("#globalSearch").value || "");
-        toast("Log deleted.");
-      }
+    if (!state.attPoints || typeof state.attPoints !== "object") state.attPoints = {};
+    if (!state.attPoints[id]) state.attPoints[id] = { kransia: 0, fieldBoss: 0, guildBoss: 0, gvg: 0 };
 
-      if(delEv){
-        if(!isAdmin()){ toast("Admin only."); return; }
-        state.events = state.events.filter(ev => ev.id !== delEv);
-        save(); renderAll($("#globalSearch").value || "");
-        toast("Event deleted.");
-      }
-    });
+    const cur = Number(state.attPoints[id][key] || 0);
+    const next = Math.max(0, cur + delta); // never below 0
+    state.attPoints[id][key] = next;
+
+    save();
+    renderAttendanceLeaderboard(document.getElementById("attendanceSearch")?.value || "");
+    return; // ⛔ stop here so other click actions don't also fire
+  }
+
+  // Member edit/delete + logs/events delete
+  const editId = t?.dataset?.edit;
+  const delId = t?.dataset?.del;
+  const delAtt = t?.dataset?.delAtt;
+  const delEv = t?.dataset?.delEv;
+
+  if (editId) {
+    if (!isAdmin()) { toast("Admin only."); openLogin(); return; }
+    const m = state.members.find(x => x.id === editId);
+    if (!m) return;
+
+    location.hash = "#members";
+    editingMemberId = m.id;
+    $("#mName").value = m.name || "";
+    $("#mRole").value = m.role || "Member";
+    $("#mPower").value = m.power || "";
+    $("#mStatus").value = m.status || "Active";
+    $("#mNotes").value = m.notes || "";
+    toast("Editing member…");
+  }
+
+  if (delId) {
+    if (!isAdmin()) { toast("Admin only."); return; }
+    state.members = state.members.filter(m => m.id !== delId);
+    save(); renderAll($("#globalSearch").value || "");
+    toast("Member deleted.");
+  }
+
+  if (delAtt) {
+    if (!isAdmin()) { toast("Admin only."); return; }
+    state.attendance = state.attendance.filter(a => a.id !== delAtt);
+    save(); renderAll($("#globalSearch").value || "");
+    toast("Log deleted.");
+  }
+
+  if (delEv) {
+    if (!isAdmin()) { toast("Admin only."); return; }
+    state.events = state.events.filter(ev => ev.id !== delEv);
+    save(); renderAll($("#globalSearch").value || "");
+    toast("Event deleted.");
+  }
+});
 
     // ---------- Reset (ADMIN ONLY) ----------
     $("#btnReset").addEventListener("click", () => {
@@ -1954,7 +1997,8 @@ function renderAttendanceLeaderboard(filter=""){
           notes: typeof data.notes === "string" ? data.notes : "",
           bosses: Array.isArray(data.bosses) ? data.bosses : [],
           fundTotal: Number(data.fundTotal || 0),
-  mgmtPct: Number(data.mgmtPct ?? 10)
+          mgmtPct: Number(data.mgmtPct ?? 10),
+          attPoints: (data.attPoints && typeof data.attPoints === "object") ? data.attPoints : {},
         };
         save();
         renderAll($("#globalSearch").value || "");
