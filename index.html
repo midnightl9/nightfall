@@ -1313,14 +1313,18 @@ onSnapshot(docRef, (snap) => {
     };
 
     // Persist locally so refresh matches cloud
-    localStorage.setItem("nightfall_guild_state_v1", JSON.stringify(window.state));
+    localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
+window.btLoadFromStorage?.();
   }
 
   if (data.bossState) {
   localStorage.setItem("bossTimers_v1", JSON.stringify(data.bossState));
 
-  // 🔥 THIS IS THE KEY LINE
-  window.btLoadFromStorage?.();
+  if (window.btLoadFromStorage) {
+    window.btLoadFromStorage();
+  } else {
+    window.__pendingBossLoad = true; // boss script not ready yet
+  }
 }
 
   // Re-render UI
@@ -1329,14 +1333,28 @@ onSnapshot(docRef, (snap) => {
 
 window.syncToCloud = async function () {
   try {
-    await setDoc(
-      docRef,
-      {
-        appState: window.state,
-        bossState: JSON.parse(localStorage.getItem("bossTimers_v1") || "{}")
-      },
-      { merge: true }
-    );
+    // Always send appState (fine)
+    const payload = { appState: window.state };
+
+    // Only send bossState if it actually looks valid
+    let bossRaw = localStorage.getItem("bossTimers_v1");
+    if (bossRaw) {
+      try {
+        const bossParsed = JSON.parse(bossRaw);
+
+        const hasManual = bossParsed && Array.isArray(bossParsed.manual);
+        const hasScheduled = bossParsed && Array.isArray(bossParsed.scheduled);
+
+        // ✅ Only include bossState if it has the right shape
+        if (hasManual || hasScheduled) {
+          payload.bossState = bossParsed;
+        }
+      } catch (e) {
+        // ignore invalid boss json
+      }
+    }
+
+    await setDoc(docRef, payload, { merge: true });
   } catch (err) {
     console.error("Cloud sync failed:", err);
   }
@@ -2286,6 +2304,8 @@ document.addEventListener("click", (e) => {
         }
       }
       let btState = loadState();
+      // On first boot, ensure Firestore gets boss timers if none exist yet
+saveState();
       const saveState = () => {
   localStorage.setItem(LS_KEY, JSON.stringify(btState));
   // ✅ push to Firebase too
@@ -2499,6 +2519,11 @@ document.addEventListener("click", (e) => {
   btState = loadState();
   btRenderAll();
 };
+      // ✅ If Firestore snapshot arrived before boss script loaded
+if (window.__pendingBossLoad) {
+  window.__pendingBossLoad = false;
+  window.btLoadFromStorage();
+}
 
       // Render
       function btRenderAll(){
