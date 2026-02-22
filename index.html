@@ -2423,10 +2423,26 @@ function dateFromPHInput(dateVal, timeVal){
       ];
 
       function uid2(){
-        if (window.crypto?.randomUUID) return crypto.randomUUID();
-        return "id_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
-      }
-      function ensureIds(arr){ return arr.map(x => (x && x.id) ? x : ({ ...x, id: uid2() })); }
+  if (window.crypto?.randomUUID) return crypto.randomUUID();
+  return "id_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+}
+
+function dedupeIds(arr){
+  const seen = new Set();
+  return arr.map(x => {
+    let id = x?.id;
+    if(!id || seen.has(id)){
+      id = uid2();
+      return { ...x, id };
+    }
+    seen.add(id);
+    return x;
+  });
+}
+
+function ensureIds(arr){
+  return dedupeIds((arr || []).map(x => (x && x.id) ? x : ({ ...x, id: uid2() })));
+}
 
       function normalizeManual(manualArr){
         const defaultByName = new Map(DEFAULT_MANUAL.map(d => [d.name.toLowerCase(), d.hours]));
@@ -2463,41 +2479,43 @@ function dateFromPHInput(dateVal, timeVal){
       let btState = loadState();
 
       window.btSetFromCloud = (cloud) => {
+  const manualRaw = Array.isArray(cloud?.manual) ? cloud.manual : [];
+  const schedRaw  = Array.isArray(cloud?.scheduled) ? cloud.scheduled : [];
+
   btState = {
-    manual: Array.isArray(cloud.manual) ? cloud.manual : [],
-    scheduled: Array.isArray(cloud.scheduled) ? cloud.scheduled : [],
-    updatedAt: Number(cloud.updatedAt || 0)
+    manual: normalizeManual(ensureIds(manualRaw)),
+    scheduled: ensureIds(schedRaw),
+    updatedAt: Number(cloud?.updatedAt || 0)
   };
 
-  // re-render timers
+  // Keep local cache aligned (prevents bouncing back)
+  localStorage.setItem(LS_KEY, JSON.stringify(btState));
+
   btRenderAll();
 };
 
-const saveState = () => {
-  // ✅ attach timestamp so cloud wins deterministically
+      let btState = loadState();
+
+const saveState = async () => {
   btState.updatedAt = Date.now();
 
-  // local cache
- const saveState = async () => {
-  btState.updatedAt = Date.now();
-
-  // optional: keep local cache
+  // keep local cache
   localStorage.setItem(LS_KEY, JSON.stringify(btState));
 
   // push to firebase
-  if (window.saveBossToCloud) await window.saveBossToCloud(btState);
-};
+  if (window.saveBossToCloud) {
+    try { await window.saveBossToCloud(btState); } catch(e){ console.error(e); }
+  }
 
-  // ✅ instant boss sync to everyone
-  if (window.pushBossState) window.pushBossState(btState);
-
-  // optional: keep the rest of your appState syncing too
+  // keep appState syncing too (optional)
   if (window.syncToCloud) window.syncToCloud();
 };
-// Optional: write initial state once (only if nothing existed)
-if (!localStorage.getItem(LS_KEY)) {
+
+      if (!localStorage.getItem(LS_KEY)) {
   saveState();
 }
+      
+      
       // Hard repair hours for defaults (keeps kill times)
       (function edgeRepairHours(){
         const defaultByName = new Map(DEFAULT_MANUAL.map(d => [d.name.toLowerCase(), d.hours]));
