@@ -1292,6 +1292,33 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+
+    import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// Boss Timers document in Firestore
+const bossDocRef = doc(db, "guild", "nightfall", "bossTimers", "v1");
+
+// Listen for boss updates from cloud
+onSnapshot(bossDocRef, (snap) => {
+  if (!snap.exists()) return;
+  const data = snap.data();
+
+  // must have arrays
+  if (!Array.isArray(data.manual) || !Array.isArray(data.scheduled)) return;
+
+  // send to non-module script
+  if (window.btSetFromCloud) window.btSetFromCloud(data);
+  else window.__pendingBossCloud = data;
+});
+
+// Save boss state to cloud (call this when admin changes something)
+window.saveBossToCloud = async (bossState) => {
+  await setDoc(bossDocRef, {
+    manual: bossState.manual || [],
+    scheduled: bossState.scheduled || [],
+    updatedAt: Date.now()
+  }, { merge: true });
+};
     
     
 
@@ -2417,12 +2444,31 @@ function dateFromPHInput(dateVal, timeVal){
 }
       let btState = loadState();
 
+      window.btSetFromCloud = (cloud) => {
+  btState = {
+    manual: Array.isArray(cloud.manual) ? cloud.manual : [],
+    scheduled: Array.isArray(cloud.scheduled) ? cloud.scheduled : [],
+    updatedAt: Number(cloud.updatedAt || 0)
+  };
+
+  // re-render timers
+  btRenderAll();
+};
+
 const saveState = () => {
   // ✅ attach timestamp so cloud wins deterministically
   btState.updatedAt = Date.now();
 
   // local cache
+ const saveState = async () => {
+  btState.updatedAt = Date.now();
+
+  // optional: keep local cache
   localStorage.setItem(LS_KEY, JSON.stringify(btState));
+
+  // push to firebase
+  if (window.saveBossToCloud) await window.saveBossToCloud(btState);
+};
 
   // ✅ instant boss sync to everyone
   if (window.pushBossState) window.pushBossState(btState);
