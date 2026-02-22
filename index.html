@@ -1293,6 +1293,9 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
+    const appStateRef = doc(db, "guild", "nightfall"); // your main appState doc
+const bossDocRef  = doc(db, "guild", "nightfall", "bossTimers", "v1"); // boss timers doc
+
 // Boss Timers document in Firestore
 const bossDocRef = doc(db, "guild", "nightfall", "bossTimers", "v1");
 
@@ -1384,7 +1387,7 @@ const baseState = () => ({
   attPoints: {},
 });
 
-onSnapshot(docRef, (snap) => {
+onSnapshot(appStateRef, (snap) => {
   if (!snap.exists()) return;
 
   const data = snap.data();
@@ -1454,7 +1457,7 @@ onSnapshot(docRef, (snap) => {
         } catch (_) {}
       }
 
-      await setDoc(docRef, payload, { merge: true });
+      await setDoc(appStateRef, payload, { merge: true });
     } catch (err) {
       console.error("Cloud sync failed:", err);
     }
