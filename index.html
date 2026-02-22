@@ -1298,6 +1298,25 @@
 // Boss Timers document in Firestore
 const bossDocRef = doc(db, "guild", "nightfall", "bossTimers", "v1");
 
+    window.initBossDocOnce = async () => {
+  const initial = {
+    manual: [
+      { id: "1", name: "Baron Braudmore", hours: 32, lastKill: null, lastRestart: null },
+      { id: "2", name: "Gareth", hours: 32, lastKill: null, lastRestart: null },
+      // add the rest...
+    ],
+    scheduled: [
+      { id: "s1", name: "Roderick", rule: "fri 19:00" },
+      { id: "s2", name: "Milavy", rule: "sat 15:00" },
+      // add the rest...
+    ],
+    updatedAt: Date.now()
+  };
+
+  await setDoc(bossDocRef, initial, { merge: true });
+  console.log("✅ Boss doc initialized");
+};
+
 // Listen for boss updates from cloud
 onSnapshot(bossDocRef, (snap) => {
   if (!snap.exists()) return;
