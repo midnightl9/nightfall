@@ -1293,8 +1293,6 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-    import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
 // Boss Timers document in Firestore
 const bossDocRef = doc(db, "guild", "nightfall", "bossTimers", "v1");
 
