@@ -1310,26 +1310,21 @@ window.authLogout = async () => {
 // Keep your UI gate in sync with Firebase login state
 onAuthStateChanged(auth, (user) => {
   sessionStorage.setItem("l9_admin_authed_v3", user ? "1" : "0");
-  window.applyAdminUI?.();
-});
 
-  // 🔥 GLOBAL SHARED DOC
-  const docRef = doc(db, "guild", "main");
-
-    window.pushBossState = async (bossState) => {
-  try {
-    const ok =
-      bossState &&
-      Array.isArray(bossState.manual) &&
-      Array.isArray(bossState.scheduled);
-
-    if (!ok) return;
-
-    await setDoc(docRef, { bossState }, { merge: true });
-  } catch (err) {
-    console.error("pushBossState failed:", err);
+  // If applyAdminUI isn't ready yet, queue it.
+  if (window.applyAdminUI) {
+    window.applyAdminUI();
+  } else {
+    window.__pendingAdminApply = true;
   }
-};
+
+  // Also re-render once auth flips
+  if (window.renderAll) {
+    window.renderAll(document.getElementById("globalSearch")?.value || "");
+  } else {
+    window.__pendingRenderAll = true;
+  }
+});
 
   // LOAD + LIVE SYNC
   // ✅ Use literal keys here because KEY/defaultState are defined later in non-module script
@@ -1351,13 +1346,18 @@ onSnapshot(docRef, (snap) => {
   const data = snap.data();
 
   // ✅ App state from cloud (safe even if non-module script hasn't loaded yet)
-  if (data.appState && typeof data.appState === "object") {
-    const merged = { ...baseState(), ...data.appState };
-    window.state = merged;
+ if (data.appState && typeof data.appState === "object") {
+  const merged = { ...baseState(), ...data.appState };
 
-    // ✅ Don't touch `state` variable here (it might not exist yet)
-    localStorage.setItem(APP_KEY, JSON.stringify(merged));
+  // ✅ FIX: update BOTH window.state AND local state variable
+  if (window.setStateFromCloud) {
+    window.setStateFromCloud(merged);
+  } else {
+    window.state = merged;
   }
+
+  localStorage.setItem(APP_KEY, JSON.stringify(merged));
+}
 
   // ✅ Boss timers from cloud
   if (data.bossState) {
@@ -1472,6 +1472,11 @@ onSnapshot(docRef, (snap) => {
 window.state = load();
 let state = window.state; // optional, but keep if your code expects `state`
 
+    window.setStateFromCloud = (merged) => {
+  window.state = merged;
+  state = merged; // IMPORTANT: keep local + global in sync
+};
+
     // ---------- Helpers ----------
     const $ = (sel) => document.querySelector(sel);
     const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -1562,6 +1567,18 @@ let state = window.state; // optional, but keep if your code expects `state`
   if(!admin && r === "settings") location.hash = "#dashboard";
 }
     window.applyAdminUI = applyAdminUI;
+
+    // If Firebase auth fired before applyAdminUI existed, apply now.
+if (window.__pendingAdminApply) {
+  window.__pendingAdminApply = false;
+  applyAdminUI();
+}
+
+// If Firebase auth fired before renderAll existed, render now.
+if (window.__pendingRenderAll) {
+  window.__pendingRenderAll = false;
+  renderAll(document.getElementById("globalSearch")?.value || "");
+}
 
     // ---------- Routing ----------
     const routes = ["dashboard","boss","members","attendance","events","settings"];
