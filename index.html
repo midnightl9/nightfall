@@ -681,6 +681,30 @@
 #view-attendance .att-table tbody tr:hover{
   background: rgba(255,255,255,.03);
 }
+
+/* ===== Activity Section Box (Kransia → GvG) ===== */
+
+/* left boundary */
+#view-attendance .att-table thead th:nth-child(2),
+#view-attendance .att-table tbody td:nth-child(2){
+  border-left: 2px solid rgba(255,255,255,.10);
+}
+
+/* internal separators */
+#view-attendance .att-table thead th:nth-child(3),
+#view-attendance .att-table thead th:nth-child(4),
+#view-attendance .att-table thead th:nth-child(5),
+#view-attendance .att-table tbody td:nth-child(3),
+#view-attendance .att-table tbody td:nth-child(4),
+#view-attendance .att-table tbody td:nth-child(5){
+  border-left: 1px solid rgba(255,255,255,.06);
+}
+
+/* right boundary */
+#view-attendance .att-table thead th:nth-child(5),
+#view-attendance .att-table tbody td:nth-child(5){
+  border-right: 2px solid rgba(255,255,255,.10);
+}
 #view-attendance .att-name{
   font-weight:900;
   color: var(--text);
