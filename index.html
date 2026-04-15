@@ -522,6 +522,21 @@
    Only affects #view-attendance
 =========================== */
 /* Center BOTH label + value inside attendance cards */
+#view-attendance .att-input{
+  width: 80px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  outline: none;
+  text-align: center;
+}
+
+#view-attendance .att-input:focus{
+  border-color: rgba(110,168,254,.45);
+}
+
 #view-attendance .att-card{
   text-align: center;
 }
@@ -1842,21 +1857,26 @@ function renderAttendanceLeaderboard(filter = "") {
   const admin = isAdmin();
 
   const cellWithAdjust = (memberId, key, value) => {
-    const safeId = escapeHtml(memberId);
-    const safeVal = Number(value || 0);
+  const safeId = escapeHtml(memberId);
+  const safeVal = Number(value || 0);
 
-    return admin
-      ? `
-        <div class="att-cell">
-          <span class="mono att-num">${safeVal}</span>
-          <span class="att-mini">
-            <button class="att-miniBtn" data-att-adj="1" data-att-id="${safeId}" data-att-key="${key}" data-att-delta="-1" title="Minus">-</button>
-            <button class="att-miniBtn" data-att-adj="1" data-att-id="${safeId}" data-att-key="${key}" data-att-delta="1" title="Plus">+</button>
-          </span>
-        </div>
-      `
-      : `<span class="mono">${safeVal}</span>`;
-  };
+  return admin
+    ? `
+      <div class="att-cell">
+        <input
+          class="att-input mono"
+          type="number"
+          min="0"
+          step="1"
+          value="${safeVal}"
+          data-att-input="1"
+          data-att-id="${safeId}"
+          data-att-key="${key}"
+        />
+      </div>
+    `
+    : `<span class="mono">${safeVal}</span>`;
+};
 
   if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan="9" class="muted" style="padding:14px 12px;">No members found.</td></tr>`;
@@ -2229,6 +2249,33 @@ document.addEventListener("click", (e) => {
     save(); renderAll($("#globalSearch").value || "");
     toast("Event deleted.");
   }
+});
+
+document.addEventListener("change", (e) => {
+  const input = closestEl(e.target, "[data-att-input='1']");
+  if (!input) return;
+
+  if (!isAdmin()) {
+    toast("Admin only.");
+    openLogin();
+    return;
+  }
+
+  const id = input.getAttribute("data-att-id");
+  const key = input.getAttribute("data-att-key");
+  const raw = Number(input.value);
+
+  if (!id || !key) return;
+
+  if (!state.attPoints || typeof state.attPoints !== "object") state.attPoints = {};
+  if (!state.attPoints[id]) {
+    state.attPoints[id] = { kransia: 0, fieldBoss: 0, guildBoss: 0, gvg: 0 };
+  }
+
+  state.attPoints[id][key] = Math.max(0, Number.isFinite(raw) ? raw : 0);
+
+  save();
+  renderAttendanceLeaderboard(document.getElementById("attendanceSearch")?.value || "");
 });
 
     // ---------- Reset (ADMIN ONLY) ----------
